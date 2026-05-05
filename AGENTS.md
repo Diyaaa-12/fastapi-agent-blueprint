@@ -23,8 +23,8 @@ Issue #117 introduced a hybrid local process governor. The four documents below,
 
 ### Hybrid Harness v1 status
 
-- **Phase 5 shipped** (#124 — 2026-05-03): governor *policy* consolidated into [`.agents/shared/governor/`](.agents/shared/governor/); Claude / Codex hook scripts are thin shims enforced by `tests/unit/agents_shared/test_governor_boundary.py`.
-- **ADR 047 steady state**: cross-tool review provenance moves to the PR description `## Governor Footer` block (CI-linted); durable governance constraints promoted to ADR Consequences (`ADR{NNN}-G{N}` slots); `governor-review-log/` archive frozen as closed historical record.
+- **Phase 5 shipped** (#124 — 2026-05-03): governor *policy* consolidated into [`.agents/shared/governor/`](.agents/shared/governor/); Claude / Codex hook scripts are thin shims enforced by `tests/unit/agents_shared/test_governor_boundary.py`; future governor changes must go into the shared package, not per-tool inline copies.
+- **[ADR 047](docs/history/047-governor-review-provenance-consolidation.md) steady state**: cross-tool review provenance moves to the PR description `## Governor Footer` block (CI-linted); durable governance constraints promoted to ADR Consequences (`ADR{NNN}-G{N}` slots); `governor-review-log/` archive frozen as closed historical record.
 - **Permanent governance model**: escape-token vocabulary, dual-tool adapters, and scope-of-impact-driven cross-tool review remain permanent (target-operating-model §3 / §7).
 
 ## Project Scale
@@ -349,7 +349,7 @@ Every non-DB infra in `CoreContainer` is optional — toggle via env vars, no co
 
 ## Structured Logging
 
-Logging is always-on (unlike Optional Infrastructure) and shared across server + worker. Pipeline: `structlog` ProcessorFormatter + `asgi-correlation-id`. Background: #9.
+Logging is always-on (unlike Optional Infrastructure Toggles) and shared across server + worker. Pipeline: `structlog` ProcessorFormatter + `asgi-correlation-id`. Background: #9.
 
 - **Logger acquisition** — all new code uses `structlog.stdlib.get_logger(__name__)`; legacy `logging.getLogger(__name__)` calls still flow through the same pipeline via the ProcessorFormatter bridge but new modules should not add more.
 - **Renderer switching** — `LOG_JSON_FORMAT` env var (None → auto: dev/local/quickstart → console, stg/prod → JSON; True/False force override). Controlled by `settings.effective_log_json`.

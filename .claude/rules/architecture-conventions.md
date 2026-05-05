@@ -1,7 +1,7 @@
 # Architecture Conventions
 
 > Last synced: 2026-05-01 via /sync-guidelines (#154 admin JWT RBAC + #156 /docs selector revamp reviewed; neither touches the data flow / object roles / generic signatures surface, so the body is unchanged.)
-> For Absolute Prohibitions, Conversion Patterns, Write DTO criteria, Responsibility Matrix, Error Translation, Optional AI Infra: Protocol + Selector Pattern, Admin Service Contract, and **Default Coding Flow** (process layer, ADR 045), refer to AGENTS.md.
+> For Absolute Prohibitions, Conversion Patterns, Write DTO criteria, Responsibility Matrix, Error Translation, Optional AI Infra (Protocol + Selector Pattern), Admin Service Contract, and **Default Coding Flow** (process layer, ADR 045), refer to AGENTS.md.
 > This file only contains **structural context** that supplements AGENTS.md for Claude.
 
 ## Data Flow (3-Tier Hybrid)
