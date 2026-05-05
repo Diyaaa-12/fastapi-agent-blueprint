@@ -65,7 +65,7 @@ All accept OTLP — only the exporter endpoint changes. No agent code modificati
 ```
 Issue #15 (PydanticAI Core) — COMPLETED
 ├──→ #74-A / #136 (OTEL core setup)                  ← SHIPPED PR #141
-│       └──→ #74-B / #137 (Langfuse opt-in recipe)   ← SHIPPED PR #137
+│       └──→ #74-B / #137 (Langfuse opt-in recipe)   ← SHIPPED PR #142
 └──→ #75 (AI Usage Tracking Domain)                  ← SHIPPED PR #149
         └──→ #97 (simple-chatbot example)             ← OPEN (depends on #75)
 ```
@@ -112,7 +112,7 @@ Issue #15 (PydanticAI Core) — COMPLETED
 - `_env/local.env.example` + `_env/quickstart.env.example` — `OTEL_ENABLED`, `OTEL_EXPORTER_OTLP_ENDPOINT`
 - `docs/operations/observability-otel.md` — Jaeger/Tempo/Phoenix quickstart + HTTP exporter swap
 
-### Issue #74-B / #137: Langfuse Opt-in Recipe (SHIPPED — PR #137)
+### Issue #74-B / #137: Langfuse Opt-in Recipe (SHIPPED — PR #142)
 
 **New**:
 - `docker-compose.langfuse.yml` — Langfuse stack (PG:5433, ClickHouse, Redis:6380, MinIO:9090, web:3000)
