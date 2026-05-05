@@ -100,7 +100,7 @@ Once CoreContainer's `embedding_client` returns `StubEmbedder` on disable, the d
 
 **Decision: keep the domain-level Selector in `docs` anyway.** Two reasons:
 
-1. **Self-contained reference pattern.** `docs_container.py` is cited in both the [`/new-domain` skill](../../.claude/skills/new-domain/SKILL.md) and [AGENTS.md's Optional Infrastructure section](../../AGENTS.md) as the canonical template for domain-level Selector wiring. Stripping it out would force future contributors to infer the pattern from absence, which is fragile.
+1. **Self-contained reference pattern.** `docs_container.py` is cited in both the [`/new-domain` skill](../../.claude/skills/new-domain/SKILL.md) and [AGENTS.md's Optional Infrastructure Toggles section](../../AGENTS.md) as the canonical template for domain-level Selector wiring. Stripping it out would force future contributors to infer the pattern from absence, which is fragile.
 2. **Core fallback is not guaranteed to exist for every optional infra.** Storage, DynamoDB, and S3 Vectors deliberately return `None` at the Core layer (no stub — fake data stores mislead, see Decision 2). Domains that consume those infras must either declare them mandatory or add a domain-level guard. Keeping the `docs` pattern visible means the guard shape is obvious when the next contributor faces a `None`-returning core provider.
 
 **Corollary for future domains:** a domain that consumes an optional infra SHOULD add a domain-level Selector if (a) graceful degradation matters to its workflow AND (b) the core layer returns `None` (no stub). If the core layer already stubs (embedding, LLM-after-Part-B), a second-level Selector is optional — add it for readability, skip it for brevity. The `/new-domain` skill generates the full pattern by default; trim as needed.
@@ -188,3 +188,5 @@ A separate smoke test imports the full FastAPI app under `clean_optional_env` to
 - **Every new optional infra uses this pattern by default.** The `/new-domain` skill templates (`/claude/skills/new-domain/`, `.codex/new-domain`) will be updated in #101 Part B so scaffolded domains ship with Selector + stub where they declare an LLM or Embedding dependency.
 - **`#82` unblocked.** Any future CLI that offers "remove DynamoDB" only needs to unset `DYNAMODB_*` in the scaffolded `.env`; no source rewriting. `#82` scope may shrink to "thin `.env` scaffolder" or be closed entirely — decision deferred to post-merge re-evaluation.
 - **`pyproject.toml` cleanup (nicegui, boto3 → optional extras) is out of scope** for this ADR. Filed as a separate follow-up issue; it is a user-facing UX change (admin dashboard mount decision, aws-installation matrix) and deserves its own design pass.
+
+> **AGENTS.md alias note (PR-B.4a):** The AGENTS.md section for this pattern was renamed from `§ Optional Infrastructure` to `§ Optional Infrastructure Toggles` for clarity. Cross-references should use the new heading name.

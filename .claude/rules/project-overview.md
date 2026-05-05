@@ -2,7 +2,7 @@
 
 > Last synced: 2026-05-01 via /sync-guidelines (#154 admin JWT RBAC + #156 /docs selector revamp reviewed; no Infrastructure / Environment / App Entrypoint surface changes — admin login provider transitioned from env-var to auth-domain JWT but the entrypoint `src/_apps/admin/` is unchanged.)
 > For tech stack, refer to project-dna.md §8; for layer structure, refer to §1.
-> For the Optional infra toggle surface (env var → disabled behavior per infra), see AGENTS.md "Optional Infrastructure" + [ADR 042](../../docs/history/042-optional-infrastructure-di-pattern.md).
+> For the Optional infra toggle surface (env var → disabled behavior per infra), see AGENTS.md "Optional Infrastructure Toggles" + [ADR 042](../../docs/history/042-optional-infrastructure-di-pattern.md).
 > This file only contains **project-level context** not covered in project-dna.md.
 
 ## Purpose
