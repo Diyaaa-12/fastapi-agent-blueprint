@@ -39,7 +39,7 @@ This file contains stable repository facts for both Claude and Codex workflows.
 ## Context Management
 
 - Keep root `AGENTS.md` short and stable.
-- Use nested `AGENTS.override.md` for directory-local rules when a subtree needs extra guidance.
+- Prefer named skills (`.agents/skills/*/SKILL.md`) for local extension; `AGENTS.override.md` may be used only if it is explicitly subject to the same drift-management and language-policy governance as `AGENTS.md` itself.
 - Put repeatable procedures in `.agents/skills/*/SKILL.md`.
 - Use `codex -p research` or `codex --search` only when live web search is necessary.
 - Treat Codex memories as personal or session-local optimization only, never as team governance.
