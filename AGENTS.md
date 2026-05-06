@@ -21,7 +21,11 @@ Issue #117 introduced a hybrid local process governor. The four documents below,
 - [`docs/ai/shared/target-operating-model.md`](docs/ai/shared/target-operating-model.md) — the target workflow, exception model, Claude/Codex alignment, and sample-workflow traces
 - [`docs/ai/shared/migration-strategy.md`](docs/ai/shared/migration-strategy.md) — phased migration plan, rollback rules, and the asset-move ordering
 
-Status (2026-05-03 — ADR 047): Phase 5 (#124) shipped the **Hybrid Harness v1** milestone (governor *policy* in a single shared package at [`.agents/shared/governor/`](.agents/shared/governor/), with Claude / Codex hook scripts under `.claude/hooks/` and `.codex/hooks/` as thin shims). [ADR 047](docs/history/047-governor-review-provenance-consolidation.md) right-sizes the steady-state surface: cross-tool review provenance moves to the PR description's `## Governor Footer` block (CI-linted), durable governance constraints live in ADR Consequences (`ADR{NNN}-G{N}` slots), and the per-PR `governor-review-log/` archive is frozen as a closed historical record. The hybrid governance model itself — escape-token vocabulary, dual-tool adapters, scope-of-impact-driven cross-tool review — remains permanent (target-operating-model §3 / §7). Future governor changes belong in the shared package, not in per-tool inline copies (`tests/unit/agents_shared/test_governor_boundary.py` enforces this).
+### Hybrid Harness v1 status
+
+- **Phase 5 shipped** (#124 — 2026-05-03): governor *policy* consolidated into [`.agents/shared/governor/`](.agents/shared/governor/); Claude / Codex hook scripts are thin shims enforced by `tests/unit/agents_shared/test_governor_boundary.py`; future governor changes must go into the shared package, not per-tool inline copies.
+- **[ADR 047](docs/history/047-governor-review-provenance-consolidation.md) steady state**: cross-tool review provenance moves to the PR description `## Governor Footer` block (CI-linted); durable governance constraints promoted to ADR Consequences (`ADR{NNN}-G{N}` slots); `governor-review-log/` archive frozen as closed historical record.
+- **Permanent governance model**: escape-token vocabulary, dual-tool adapters, and scope-of-impact-driven cross-tool review remain permanent (target-operating-model §3 / §7).
 
 ## Project Scale
 
@@ -292,7 +296,7 @@ Provider SDK exception
   OR → 500 Internal Server Error (unrecognised exception)
 ```
 
-## Optional AI Infra Pattern
+## Optional AI Infra: Protocol + Selector Pattern
 
 All AI features (LLM classification, RAG answering, embedding) follow the same Protocol + Infra Adapter + Selector pattern. Background: [ADR 040](docs/history/040-rag-as-reusable-pattern.md) + [ADR 042](docs/history/042-optional-infrastructure-di-pattern.md).
 
@@ -328,7 +332,7 @@ docs_admin_page = BaseAdminPage(
 service = docs_admin_page._get_extra_service("query")
 ```
 
-## Optional Infrastructure
+## Optional Infrastructure Toggles
 
 Every non-DB infra in `CoreContainer` is optional — toggle via env vars, no code change. When a group is disabled, the provider returns a stub (where graceful degradation matters) or `None` (for data stores). Background: [ADR 042](docs/history/042-optional-infrastructure-di-pattern.md).
 
@@ -347,7 +351,7 @@ Every non-DB infra in `CoreContainer` is optional — toggle via env vars, no co
 
 ## Structured Logging
 
-Logging is always-on (unlike Optional Infrastructure) and shared across server + worker. Pipeline: `structlog` ProcessorFormatter + `asgi-correlation-id`. Background: #9.
+Logging is always-on (unlike Optional Infrastructure Toggles) and shared across server + worker. Pipeline: `structlog` ProcessorFormatter + `asgi-correlation-id`. Background: #9.
 
 - **Logger acquisition** — all new code uses `structlog.stdlib.get_logger(__name__)`; legacy `logging.getLogger(__name__)` calls still flow through the same pipeline via the ProcessorFormatter bridge but new modules should not add more.
 - **Renderer switching** — `LOG_JSON_FORMAT` env var (None → auto: dev/local/quickstart → console, stg/prod → JSON; True/False force override). Controlled by `settings.effective_log_json`.
