@@ -1,8 +1,8 @@
 # AI Infrastructure Overview
 
-> Temporary design document for cross-session context transfer.
-> Covers the full scope of issues #15 (PydanticAI core), observability (#74 split), and AI Usage Tracking (#75).
-> After all three are complete, merge into project-dna.md via `/sync-guidelines` and archive this file.
+> Living reference for AI infrastructure decisions and issue status.
+> Covers PydanticAI core (#15 — completed), OTEL observability (#74 split — shipped), AI Usage Tracking (#75 — shipped), and the deferred prompt domain.
+> Not a substitute for canonical sources (`AGENTS.md`, `project-dna.md`); use for current issue status and OTEL backend comparison.
 >
 > **2026-04-28 update**: ADR 038 (Langfuse 1st-class) superseded by ADR 046 (OTEL core + Langfuse opt-in recipe + prompt domain defer). Architecture diagram and technology table updated accordingly.
 
@@ -64,13 +64,11 @@ All accept OTLP — only the exporter endpoint changes. No agent code modificati
 
 ```
 Issue #15 (PydanticAI Core) — COMPLETED
-├──→ #74-A (OTEL core setup)                         ← split from #74
-│       └──→ #74-B (Langfuse opt-in recipe doc)      ← depends on #74-A
-└──→ #75 (AI Usage Tracking Domain)                  ← can run parallel to #74-A/B
-        └──→ #97 (simple-chatbot example)             ← depends on #75
+├──→ #74-A / #136 (OTEL core setup)                  ← SHIPPED PR #141
+│       └──→ #74-B / #137 (Langfuse opt-in recipe)   ← SHIPPED PR #142
+└──→ #75 (AI Usage Tracking Domain)                  ← SHIPPED PR #149
+        └──→ #97 (simple-chatbot example)             ← OPEN (depends on #75)
 ```
-
-Note: `#74-A` and `#74-B` are placeholder names; actual issue numbers assigned after #74 closes.
 
 ## Key Design Decisions
 
@@ -114,14 +112,14 @@ Note: `#74-A` and `#74-B` are placeholder names; actual issue numbers assigned a
 - `_env/local.env.example` + `_env/quickstart.env.example` — `OTEL_ENABLED`, `OTEL_EXPORTER_OTLP_ENDPOINT`
 - `docs/operations/observability-otel.md` — Jaeger/Tempo/Phoenix quickstart + HTTP exporter swap
 
-### Issue #74-B: Langfuse Opt-in Recipe (PENDING, depends on #74-A)
+### Issue #74-B / #137: Langfuse Opt-in Recipe (SHIPPED — PR #142)
 
 **New**:
 - `docker-compose.langfuse.yml` — Langfuse stack (PG:5433, ClickHouse, Redis:6380, MinIO:9090, web:3000)
 - `Makefile` — `observability-langfuse` target
 - `docs/operations/observability-langfuse.md` — OTLP endpoint config + note: prompt linking requires Langfuse SDK in addition to OTLP
 
-### Issue #75: AI Usage Tracking Domain (PENDING)
+### Issue #75: AI Usage Tracking Domain (SHIPPED — PR #149)
 
 **New**:
 - `src/ai_usage/` — Full domain (auto-discovered):
@@ -144,7 +142,7 @@ Note: `#74-A` and `#74-B` are placeholder names; actual issue numbers assigned a
 | — | `prompt_source String(20) nullable` | `"inline"` / `"langfuse"` / `"self"` / None |
 | — | `external_prompt_ref String(500) nullable` | Langfuse prompt UUID or other external ref |
 
-### Issue #97: simple-chatbot Example (PENDING, depends on #75)
+### Issue #97: simple-chatbot Example (OPEN, depends on #75 — now shipped)
 
 - Inline `SYSTEM_PROMPT` constant — no prompt domain dependency
 - `tokens_used` in response for educational purposes

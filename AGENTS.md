@@ -308,6 +308,8 @@ All AI features (LLM classification, RAG answering, embedding) follow the same P
 
 **Selector selector function convention:** `def _classifier_selector() -> str: return "real" if settings.llm_model_name else "stub"`
 
+Deeper non-canonical reference: [docs/ai/shared/ai-infrastructure-overview.md](docs/ai/shared/ai-infrastructure-overview.md) — current status of AI infra issues (#74/#75/#97) and OTEL backend comparison.
+
 ## Admin Service Contract
 
 Admin pages consume domain services through `AdminCrudServiceProtocol` (`_core/domain/protocols/admin_service_protocol.py`). Any `BaseService` subclass satisfies this protocol automatically.
