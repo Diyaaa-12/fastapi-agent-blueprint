@@ -45,7 +45,7 @@ REFRESH_TOKEN="$(echo "${REGISTER_RESPONSE}" | python3 -c "import json,sys;print
 
 if [ -z "${ACCESS_TOKEN}" ]; then
   note "Register returned no token — trying login with existing alice account"
-  LOGIN_BODY='{"email":"alice@example.com","password":"secret123"}'
+  LOGIN_BODY='{"username":"alice","password":"secret123"}'
   LOGIN_RESPONSE="$(curl -sS -X POST "${BASE_URL}/v1/auth/login" \
     -H 'Content-Type: application/json' \
     -d "${LOGIN_BODY}")"
@@ -100,6 +100,6 @@ if [ -n "${REFRESH_TOKEN}" ]; then
 fi
 
 note "Logout"
-run "curl -sS -X POST '${BASE_URL}/v1/auth/logout' -H '${AUTH_HEADER}' | pretty"
+run "curl -sS -X POST '${BASE_URL}/v1/auth/logout' -H 'Content-Type: application/json' -H '${AUTH_HEADER}' -d '{\"refreshToken\":\"${REFRESH_TOKEN}\"}' | pretty"
 
 note "Done. API docs: ${BASE_URL}/docs"
