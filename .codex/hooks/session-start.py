@@ -10,7 +10,7 @@ message = "\n".join(
         "- Command hooks: .codex/hooks.json",
         "- Reasoning-level guards (F/G/H/I) live in AGENTS.md § Reasoning-Level Consistency Guards; they apply to every conversation and review step, not only PR-level work.",
         "- Use `codex -p research` or `codex --search` only when live web search is actually needed.",
-        "- If context feels tight, keep root AGENTS.md short and prefer AGENTS.override.md plus named skills.",
+        "- If context feels tight, keep root AGENTS.md short and prefer named skills; AGENTS.override.md is acceptable only when explicitly subject to the same governance as AGENTS.md.",
         "- Codex memories are personal/session optimization, not the team's canonical rules.",
     ]
 )
