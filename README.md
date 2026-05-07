@@ -124,6 +124,8 @@ Full integration walkthrough (auth · RBAC · worker · admin · RAG · OTEL): [
 - Full setup: [`docs/ai-development.md`](docs/ai-development.md)
 - Manual path: [`docs/tutorial/first-domain.md`](docs/tutorial/first-domain.md) (Path B)
 
+![/new-domain order → 44 files scaffolded → tests pass](docs/assets/cast/new-domain.gif)
+
 > Works as a normal FastAPI blueprint. With Claude Code or Codex CLI, the same domain workflow becomes AI-assisted and repeatable.
 
 </td>
