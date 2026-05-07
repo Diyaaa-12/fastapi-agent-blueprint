@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.5.0] - 2026-05-07
 
+This release closes the production-readiness gap and prepares the project for
+broader adoption. Three themes: **(1) Production feature closure** — JWT auth
++ NiceGUI RBAC, AI Usage Ledger, Taskiq smart retry, OTEL tracing, and
+`/docs` selector revamp with `frontend-handoff.md`; **(2) AI workflow
+hardening** — Hybrid Harness v1 (7-step coding flow, shared governor,
+localized reminders), Language Policy, Reasoning-Level Consistency Guards;
+**(3) OSS launch readiness** — `docs/adoption.md`, `docs/comparison.md`,
+`docs/compatibility.md`, `SUPPORT.md`, expanded `CONTRIBUTING.md`,
+`docs/README.md` index, terminal demo GIFs.
+
 ### Added
 
 - JWT authentication domain (`src/auth/`) — HS256 access/refresh tokens, DB-backed rotation/revocation, `/v1/auth/register`, `/v1/auth/login`, `/v1/auth/refresh`, `/v1/auth/logout`, `/v1/auth/me`, Bearer protection for user API routes ([#4](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/4))
