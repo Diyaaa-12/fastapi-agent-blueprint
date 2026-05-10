@@ -287,12 +287,38 @@ def test_log_only_backfill_is_not_governor_changing():
     assert violations == []
 
 
-def test_bypass_token_skips_validation():
+def test_bypass_token_skips_non_governor_pr():
     body = "# PR description\n\n[skip-governor-footer]\n\nMalformed footer below.\n\n## Governor Footer\n- trigger: maybe\n"
     violations = cgf.check_body(
         body,
         source="t",
         require_governor_footer=True,
+        changed_files=["src/user/service.py"],
+    )
+    assert violations == []
+
+
+def test_bypass_token_blocked_for_governor_pr():
+    body = "# PR description\n\n[skip-governor-footer]\n"
+    violations = cgf.check_body(
+        body,
+        source="t",
+        require_governor_footer=True,
+        changed_files=["AGENTS.md"],
+    )
+    assert len(violations) == 1
+    assert "[skip-governor-footer]" in violations[0].reason
+    assert "ADR 048-G1" in violations[0].reason
+
+
+def test_bypass_token_in_non_ci_mode_allows_governor_file():
+    # Without --require-governor-footer, is_governor is always False,
+    # so the escape token still works for local dry-runs (ADR 048 D3).
+    body = "# PR description\n\n[skip-governor-footer]\n"
+    violations = cgf.check_body(
+        body,
+        source="t",
+        require_governor_footer=False,
         changed_files=["AGENTS.md"],
     )
     assert violations == []
