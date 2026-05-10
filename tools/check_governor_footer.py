@@ -52,6 +52,15 @@ HEADING = "## Governor Footer"
 FENCED_CODE_RE = re.compile(r"^[ ]{0,3}(```|~~~)")
 HEADING_RE = re.compile(r"^##\s")
 BYPASS_TOKEN = "[skip-governor-footer]"  # noqa: S105 — opt-in escape token, not a credential
+_FENCED_BLOCK_RE = re.compile(r"```.*?```|~~~.*?~~~", re.DOTALL)
+_CODE_SPAN_RE = re.compile(r"`[^`\n]+`")
+
+
+def _body_without_code(body: str) -> str:
+    """Strip fenced code blocks and inline code spans for bypass-token detection."""
+    without_fenced = _FENCED_BLOCK_RE.sub("", body)
+    return _CODE_SPAN_RE.sub("", without_fenced)
+
 
 FIELD_ORDER = (
     "trigger",
@@ -200,7 +209,7 @@ def parse_footer(
     and value-grammar violations populate ``violations``.
     """
 
-    if BYPASS_TOKEN in body:
+    if BYPASS_TOKEN in _body_without_code(body):
         return None, []
 
     raw_lines = body.splitlines()
@@ -328,7 +337,7 @@ def check_body(
     else:
         is_governor = False
 
-    if BYPASS_TOKEN in body:
+    if BYPASS_TOKEN in _body_without_code(body):
         if is_governor:
             # Governor-changing PRs cannot bypass mandatory independent review (ADR 048-G1).
             # Use docs/ai/shared/governor-paths.md § Exclusions for path-level exemptions.
