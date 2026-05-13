@@ -155,8 +155,10 @@ Check configuration files and pyproject.toml:
 - [ ] [Always][MEDIUM] Field default values do not contain actual secrets
   - Grep: `Field(default=` -> verify whether default contains actual credentials
 - [ ] [Always][HIGH] Docker Compose and operations recipes do not ship reusable secret defaults
-  - Grep: `\$\{[^}]*(SECRET|PASSWORD|TOKEN|AUTH|KEY)[^}]*:-[^}]+\}` in `docker-compose*.yml`, `_env/*.example`, and `docs/operations/`
+  - Grep compose/operations interpolation: `\$\{[^}]*(SECRET|PASSWORD|TOKEN|AUTH|KEY)[^}]*:-[^}]+\}` in `docker-compose*.yml` and `docs/operations/`
+  - Grep env templates: `^[A-Z0-9_]*(SECRET|PASSWORD|TOKEN|AUTH|KEY)[A-Z0-9_]*=.+` in `_env/*.example`
   - Verify secret-bearing variables are required (`:?`) or generated into gitignored local env files before startup
+  - Verify committed env-template values are obvious placeholders documented as non-deployable (`REPLACE_ME`, `unused`, local-only dummy values) rather than reusable credentials
   - Exclude non-secret identifiers such as public keys only after checking paired secret/key usage
 
 ## 6. Error Handling & Logging
