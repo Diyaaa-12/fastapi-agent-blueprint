@@ -11,6 +11,11 @@ This Compose recipe is local-development infrastructure. It publishes host
 ports on `127.0.0.1` and expects local-only secrets in `_env/langfuse.env`; do
 not reuse it as a production deployment manifest.
 
+GenAI spans may include prompts, input/output messages, and system
+instructions. Before enabling OTEL traces in a production-like environment,
+decide who can access the trace backend and how long trace payloads are
+retained.
+
 ## What you get
 
 With the OTEL core enabled, Langfuse can display the GenAI spans emitted by
