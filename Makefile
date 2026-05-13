@@ -56,8 +56,14 @@ langfuse-env: $(LANGFUSE_ENV_FILE)
 
 $(LANGFUSE_ENV_FILE):
 	@echo "→ Creating $(LANGFUSE_ENV_FILE) with local random secrets"
-	@tmp="$(LANGFUSE_ENV_FILE).tmp"; \
+	@set -e; \
+		mkdir -p "$(dir $(LANGFUSE_ENV_FILE))"; \
+		tmp="$(LANGFUSE_ENV_FILE).tmp"; \
+		trap 'rm -f "$$tmp"' 0; \
+		rm -f "$$tmp"; \
+		umask 077; \
 		bash scripts/create-langfuse-env.sh > "$$tmp"; \
+		chmod 600 "$$tmp"; \
 		mv "$$tmp" "$(LANGFUSE_ENV_FILE)"
 
 ## Start the opt-in Langfuse observability stack
