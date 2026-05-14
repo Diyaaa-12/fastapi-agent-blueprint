@@ -28,6 +28,7 @@ Module-level invariant (Plan §D3): no top-level ``sys.exit``.
 from __future__ import annotations
 
 import contextlib
+import os
 import sys
 import time
 from pathlib import Path
@@ -35,7 +36,8 @@ from pathlib import Path
 from _shared import REPO_ROOT, changed_files
 from verify_first import session_id
 
-STATE_DIR = REPO_ROOT / ".codex" / "state"
+STATE_ROOT = Path(os.environ.get("HARNESS_STATE_ROOT", REPO_ROOT))
+STATE_DIR = STATE_ROOT / ".codex" / "state"
 GOVERNOR_PATHS_MD = REPO_ROOT / "docs" / "ai" / "shared" / "governor-paths.md"
 
 _SHARED = REPO_ROOT / ".agents" / "shared"

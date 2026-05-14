@@ -104,6 +104,17 @@ repos:
         pass_filenames: false
         always_run: true
 
+      # Hook execution surface guard:
+      # live agent hook wrappers must invoke the shared harness launcher instead
+      # of bare python3. Scope is limited to .codex/hooks.json commands and
+      # executable lines in .claude/hooks/*.sh.
+      - id: harness-hook-surface
+        name: "Harness hooks: no bare python3 execution"
+        language: system
+        entry: python3 tools/check_harness_hook_surface.py
+        pass_filenames: false
+        always_run: true
+
       # Guard G closure enforcement (post-ADR 047):
       # The canonical Guard G enforcement target moved from the per-PR
       # governor-review-log/ archive to the PR-description Governor Footer

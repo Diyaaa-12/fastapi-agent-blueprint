@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .codex/hooks/session-start.py",
+            "command": "sh .agents/shared/harness-python.sh .codex/hooks/session-start.py",
             "timeout": 30,
             "statusMessage": "sharing Codex session guidance"
           }
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .codex/hooks/user-prompt-submit.py",
+            "command": "sh .agents/shared/harness-python.sh .codex/hooks/user-prompt-submit.py",
             "timeout": 30,
             "statusMessage": "checking prompt safety"
           }
@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .codex/hooks/pre-tool-security.py",
+            "command": "sh .agents/shared/harness-python.sh .codex/hooks/pre-tool-security.py",
             "timeout": 30,
             "statusMessage": "checking shell command safety"
           }
@@ -43,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .codex/hooks/post-tool-format.py",
+            "command": "sh .agents/shared/harness-python.sh .codex/hooks/post-tool-format.py",
             "timeout": 120,
             "statusMessage": "formatting changed Python files"
           }
@@ -55,7 +55,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .codex/hooks/stop-sync-reminder.py",
+            "command": "sh .agents/shared/harness-python.sh .codex/hooks/stop-sync-reminder.py",
             "timeout": 30,
             "statusMessage": "checking documentation drift"
           }
