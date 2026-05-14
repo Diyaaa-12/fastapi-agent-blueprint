@@ -203,7 +203,7 @@ def should_remind() -> bool:
 
     if not changed_python_files():
         return False
-    token = read_latest_token_marker(REPO_ROOT / ".codex" / "state")
+    token = read_latest_token_marker(STATE_DIR)
     if token in EXPLORATION_TOKENS:
         return False
     verify_ns = current_session_latest_verify_ns()
