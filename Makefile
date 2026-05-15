@@ -1,6 +1,7 @@
-.PHONY: help setup quickstart demo demo-rag dev worker langfuse-env observability-langfuse observability-langfuse-down test lint format check clean diagrams
+.PHONY: help setup quickstart demo demo-rag dev worker langfuse-env observability-langfuse observability-langfuse-down test lint format check check-core check-full check-minimal clean diagrams
 
 LANGFUSE_ENV_FILE := _env/langfuse.env
+MINIMAL_UV_ENV := /tmp/fastapi-agent-blueprint-minimal-venv
 
 ## Show available commands
 help:
@@ -96,7 +97,7 @@ test-dynamo:
 	docker compose -f docker-compose.local.yml up -d dynamodb-local && \
 	sleep 2 && \
 	set -a && . _env/local.env && set +a && \
-	uv run pytest tests/integration/_core/infrastructure/dynamodb/ -v
+	uv run pytest tests/integration/_core/infrastructure/persistence/nosql/dynamodb/ -v
 
 ## Run tests with coverage
 test-cov:
@@ -110,11 +111,30 @@ lint:
 format:
 	uv run ruff format src/
 
-## Run all checks (lint + format check + tests)
-check:
+## Run fast local checks (lint + format check + core tests)
+check-core:
+	uv run ruff check src/ && \
+	uv run ruff format --check src/ && \
+	uv run pytest tests/ -v \
+		--ignore=tests/unit/_core/infrastructure/persistence/nosql \
+		--ignore=tests/integration
+
+## Alias for fast local checks
+check: check-core
+
+## Run CI-parity checks (requires admin + aws extras and dynamodb-local)
+check-full:
+	uv sync --group dev --extra admin --extra aws && \
+	docker compose -f docker-compose.local.yml up -d dynamodb-local && \
+	sleep 2 && \
 	uv run ruff check src/ && \
 	uv run ruff format --check src/ && \
 	uv run pytest tests/ -v
+
+## Run no-extra minimal-install regression in an isolated uv environment
+check-minimal:
+	UV_PROJECT_ENVIRONMENT=$(MINIMAL_UV_ENV) uv sync --group dev && \
+	UV_PROJECT_ENVIRONMENT=$(MINIMAL_UV_ENV) uv run pytest tests/integration/_core/test_minimal_install.py -v
 
 ## Run pre-commit on all files
 pre-commit:

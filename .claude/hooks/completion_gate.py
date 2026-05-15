@@ -1,7 +1,7 @@
 """Completion-gate helper (Phase 5 of #117 / #124) — thin shim.
 
 Called by ``.claude/hooks/stop-sync-reminder.sh``:
-    COMPLETION_OUT=$(python3 "$(dirname "$0")/completion_gate.py" 2>/dev/null || true)
+    COMPLETION_OUT=$(sh "$PY_LAUNCHER" "${HOOK_DIR}/completion_gate.py" 2>/dev/null || true)
 
 Phase 5 consolidates governor *policy* (reminder templates, glob parsing,
 match-log classification, marker lifecycle) into ``.agents/shared/governor``.
@@ -18,11 +18,13 @@ Module-level invariant (Plan §D3): no top-level ``sys.exit``.
 from __future__ import annotations
 
 import contextlib
+import os
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-STATE_DIR = REPO_ROOT / ".claude" / "state"
+STATE_ROOT = Path(os.environ.get("HARNESS_STATE_ROOT", REPO_ROOT))
+STATE_DIR = STATE_ROOT / ".claude" / "state"
 GOVERNOR_PATHS_MD = REPO_ROOT / "docs" / "ai" / "shared" / "governor-paths.md"
 
 _SHARED = REPO_ROOT / ".agents" / "shared"

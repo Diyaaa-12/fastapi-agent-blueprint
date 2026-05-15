@@ -4,7 +4,7 @@
 # Always exit 0 (advisory only)
 #
 # AGENT_LOCALE rendering (issue #133): translated headers/labels are
-# resolved by invoking `python3 -m governor.locale KEY` from the canonical
+# resolved by invoking the shared Python launcher with `-m governor.locale KEY` from the canonical
 # locale data file. This shell file itself contains no Korean — every
 # fallback string is the canonical English source per Issue AC.
 
@@ -13,6 +13,7 @@ set -euo pipefail
 HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "${HOOK_DIR}/../.." && pwd)"
 SHARED_DIR="${REPO_ROOT}/.agents/shared"
+PY_LAUNCHER="${REPO_ROOT}/.agents/shared/harness-python.sh"
 
 # bash 3.2 (macOS default) compatible lowercase. ${var,,} is bash 4+ only.
 _agent_locale_lc=""
@@ -25,7 +26,7 @@ _resolve_locale() {
     # arg containing $ to avoid set -u "unbound variable" on $sync-guidelines).
     local resolved=""
     if [ -n "$_agent_locale_lc" ] && [ "$_agent_locale_lc" != "en" ]; then
-        resolved=$(PYTHONPATH="$SHARED_DIR" python3 -m governor.locale "$1" 2>/dev/null) || resolved=""
+        resolved=$(PYTHONPATH="$SHARED_DIR" sh "$PY_LAUNCHER" -m governor.locale "$1" 2>/dev/null) || resolved=""
     fi
     if [ -n "$resolved" ]; then
         printf '%s\n' "$resolved"
@@ -65,10 +66,10 @@ fi
 # event, not only when files changed). Output captured here; printed below
 # only when CHANGED is non-empty so advisory sessions stay silent.
 # Fail-open: helper crash → markers not cleaned, advisory unaffected (HC-4.7).
-COMPLETION_OUT=$(python3 "${HOOK_DIR}/completion_gate.py" 2>/dev/null || true)
+COMPLETION_OUT=$(sh "$PY_LAUNCHER" "${HOOK_DIR}/completion_gate.py" 2>/dev/null || true)
 
 # Work-ledger: refresh verification snapshot from git on every Stop (fail-open).
-PYTHONPATH="${SHARED_DIR}" python3 -c "
+PYTHONPATH="${SHARED_DIR}" sh "$PY_LAUNCHER" -c "
 import sys; sys.path.insert(0, '${SHARED_DIR}')
 try:
     from work_ledger import update_verification_from_git
@@ -85,7 +86,7 @@ FOUNDATION=""
 STRUCTURE=""
 _ADVISORY_OK=0
 if _ADVISORY_RAW=$(printf '%s\n' "$CHANGED" \
-        | PYTHONPATH="${SHARED_DIR}" python3 -m governor.sync_advisory_cli 2>/dev/null); then
+        | PYTHONPATH="${SHARED_DIR}" sh "$PY_LAUNCHER" -m governor.sync_advisory_cli 2>/dev/null); then
     _ADVISORY_LEVEL=$(echo "$_ADVISORY_RAW" | head -1)
     _ADVISORY_FILES=$(echo "$_ADVISORY_RAW" | tail -n +2 | grep -v '^$' || true)
     case "$_ADVISORY_LEVEL" in

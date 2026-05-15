@@ -21,15 +21,25 @@ Decision payload schema is shared with Codex side and frozen by Phase 2:
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-STATE_DIR = REPO_ROOT / ".claude" / "state"
+STATE_ROOT = Path(os.environ.get("HARNESS_STATE_ROOT", REPO_ROOT))
+STATE_DIR = STATE_ROOT / ".claude" / "state"
 
 _SHARED = REPO_ROOT / ".agents" / "shared"
 if str(_SHARED) not in sys.path:
     sys.path.insert(0, str(_SHARED))
+
+try:
+    from harness_debug import debug_log  # noqa: E402
+except Exception:  # noqa: BLE001
+
+    def debug_log(event: str, exc: BaseException | None = None) -> None:
+        return
+
 
 try:
     from governor import (  # noqa: E402 — sys.path adjusted above
@@ -39,7 +49,8 @@ try:
     from governor import write_marker as _shared_write_marker  # noqa: E402
 
     _SHARED_OK = True
-except Exception:  # noqa: BLE001 — HC-5.5 fail-open, must not raise SystemExit
+except Exception as exc:  # noqa: BLE001 — HC-5.5 fail-open, must not raise SystemExit
+    debug_log("claude user-prompt shared import failed", exc)
     TOKEN_REGEX = None  # type: ignore[assignment]
     _shared_write_marker = None
     _SHARED_OK = False
@@ -78,7 +89,8 @@ def main() -> int:
         payload = parse_exception_token(prompt)
         write_marker(payload)
         print(json.dumps(payload, ensure_ascii=False), file=sys.stderr)
-    except Exception:  # noqa: BLE001 — HC-5.5 fail-open
+    except Exception as exc:  # noqa: BLE001 — HC-5.5 fail-open
+        debug_log("claude user-prompt token parse failed", exc)
         return 0
 
     # Work-ledger: persist last_prompt for cross-session context continuity.
@@ -88,8 +100,8 @@ def main() -> int:
             from work_ledger import update_last_prompt  # noqa: PLC0415
 
             update_last_prompt(prompt)
-        except Exception:  # noqa: BLE001,S110 — HC-5.5 fail-open
-            pass
+        except Exception as exc:  # noqa: BLE001 — HC-5.5 fail-open
+            debug_log("claude user-prompt ledger update failed", exc)
 
     return 0
 

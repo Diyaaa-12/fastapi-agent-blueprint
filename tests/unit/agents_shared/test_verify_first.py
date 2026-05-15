@@ -189,6 +189,26 @@ def test_codex_reminds_when_no_verify_log(codex_helper, tmp_path, monkeypatch) -
     assert codex_helper.should_remind() is True
 
 
+def test_codex_should_remind_reads_token_from_configured_state_dir(
+    codex_helper, tmp_path, monkeypatch
+) -> None:
+    state_dir = tmp_path / "isolated" / ".codex" / "state"
+    seen: list[Path] = []
+
+    def fake_read_latest_token_marker(path: Path) -> str:
+        seen.append(path)
+        return "exploration"
+
+    monkeypatch.setattr(codex_helper, "changed_python_files", lambda: ["src/foo.py"])
+    monkeypatch.setattr(codex_helper, "STATE_DIR", state_dir)
+    monkeypatch.setattr(
+        codex_helper, "read_latest_token_marker", fake_read_latest_token_marker
+    )
+
+    assert codex_helper.should_remind() is False
+    assert seen == [state_dir]
+
+
 def test_codex_silent_when_verify_log_recent(codex_helper, monkeypatch) -> None:
     monkeypatch.setattr(codex_helper, "changed_python_files", lambda: ["src/foo.py"])
     monkeypatch.setattr(

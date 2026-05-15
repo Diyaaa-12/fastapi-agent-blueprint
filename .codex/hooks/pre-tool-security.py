@@ -21,10 +21,19 @@ if str(_SHARED) not in sys.path:
     sys.path.insert(0, str(_SHARED))
 
 try:
+    from harness_debug import debug_log  # noqa: E402
+except Exception:  # noqa: BLE001
+
+    def debug_log(event: str, exc: BaseException | None = None) -> None:
+        return
+
+
+try:
     from governor.shell_safety import check_bash_command  # noqa: E402
 
     _SHARED_OK = True
-except Exception:  # noqa: BLE001 — HC-5.5 fail-open
+except Exception as exc:  # noqa: BLE001 — HC-5.5 fail-open
+    debug_log("codex pre-tool shared import failed", exc)
     check_bash_command = None  # type: ignore[assignment]
     _SHARED_OK = False
 
@@ -45,10 +54,15 @@ def deny(reason: str) -> None:
 
 
 def main() -> None:
-    payload = json.load(sys.stdin)
+    try:
+        payload = json.load(sys.stdin)
+    except json.JSONDecodeError as exc:
+        debug_log("codex pre-tool payload parse failed", exc)
+        return
     command = payload.get("tool_input", {}).get("command", "")
 
     if not _SHARED_OK or check_bash_command is None:
+        debug_log("codex pre-tool safety check unavailable")
         return
 
     result = check_bash_command(command)

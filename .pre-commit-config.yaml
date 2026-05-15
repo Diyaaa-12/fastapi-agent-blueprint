@@ -91,7 +91,7 @@ repos:
         language: system
         entry: python3 tools/check_language_policy.py
         pass_filenames: true
-        files: '^(AGENTS\.md|CLAUDE\.md|CONTRIBUTING\.md|CODE_OF_CONDUCT\.md|SECURITY\.md|docs/ai/shared/.*\.md|docs/history/.*\.md|\.claude/rules/.*\.md|\.claude/hooks/.*|\.claude/skills/.*\.md|\.codex/rules/.*|\.codex/hooks/.*|\.agents/.*\.(py|md)|\.github/pull_request_template\.md|\.github/workflows/.*\.ya?ml)$'
+        files: '^(AGENTS\.md|CLAUDE\.md|CONTRIBUTING\.md|CODE_OF_CONDUCT\.md|SECURITY\.md|docs/ai/shared/.*\.md|docs/history/.*\.md|\.claude/rules/.*\.md|\.claude/hooks/.*|\.claude/skills/.*\.md|\.codex/rules/.*|\.codex/hooks/.*|\.agents/.*\.(py|md|sh)|\.github/pull_request_template\.md|\.github/workflows/.*\.ya?ml)$'
 
       # State lifecycle health check (PR-A.3):
       # FAIL-HARD on git-tracked state files (.claude/state/, .codex/state/).
@@ -101,6 +101,17 @@ repos:
         name: "State lifecycle: no tracked state files (warn on stale markers)"
         language: system
         entry: python3 tools/check_state_lifecycle.py
+        pass_filenames: false
+        always_run: true
+
+      # Hook execution surface guard:
+      # live agent hook wrappers must invoke the shared harness launcher instead
+      # of bare python3. Scope is limited to .codex/hooks.json commands and
+      # executable lines in .claude/hooks/*.sh.
+      - id: harness-hook-surface
+        name: "Harness hooks: no bare python3 execution"
+        language: system
+        entry: python3 tools/check_harness_hook_surface.py
         pass_filenames: false
         always_run: true
 

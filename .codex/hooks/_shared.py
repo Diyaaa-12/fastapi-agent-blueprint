@@ -13,12 +13,21 @@ if str(_SHARED_PKG) not in sys.path:
     sys.path.insert(0, str(_SHARED_PKG))
 
 try:
+    from harness_debug import debug_log  # noqa: E402
+except Exception:  # noqa: BLE001
+
+    def debug_log(event: str, exc: BaseException | None = None) -> None:
+        return
+
+
+try:
     from governor.completion_gate import (  # noqa: E402 — sys.path adjusted above
         changed_files_via_git as _impl,
     )
 
     _GATE_OK = True
-except Exception:  # noqa: BLE001 — HC-5.5 fail-open
+except Exception as exc:  # noqa: BLE001 — HC-5.5 fail-open
+    debug_log("codex shared changed-files import failed", exc)
     _impl = None  # type: ignore[assignment]
     _GATE_OK = False
 
@@ -41,7 +50,8 @@ def changed_files() -> list[str]:
     if _GATE_OK and _impl is not None:
         try:
             return _impl()
-        except Exception:  # noqa: BLE001, S110 — HC-5.5: execution fail-open, fall through
+        except Exception as exc:  # noqa: BLE001 — HC-5.5: execution fail-open, fall through
+            debug_log("codex shared changed-files execution failed", exc)
             pass
     # Fallback when governor module is unavailable or _impl() raises (HC-5.5).
     # sorted() applied for consistent ordering with changed_files_via_git().

@@ -14,11 +14,13 @@ contract:
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-STATE_DIR = REPO_ROOT / ".claude" / "state"
+STATE_ROOT = Path(os.environ.get("HARNESS_STATE_ROOT", REPO_ROOT))
+STATE_DIR = STATE_ROOT / ".claude" / "state"
 
 _SHARED = REPO_ROOT / ".agents" / "shared"
 if str(_SHARED) not in sys.path:

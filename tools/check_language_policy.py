@@ -66,6 +66,7 @@ TIER1_GLOBS: tuple[str, ...] = (
     ".codex/hooks/**/*",
     ".agents/**/*.py",
     ".agents/**/*.md",
+    ".agents/**/*.sh",
     ".github/pull_request_template.md",
     ".github/workflows/**/*.yml",
     ".github/workflows/**/*.yaml",

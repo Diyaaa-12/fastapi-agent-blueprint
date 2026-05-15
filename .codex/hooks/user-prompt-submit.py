@@ -18,15 +18,25 @@ from __future__ import annotations
 
 import contextlib
 import json
+import os
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-STATE_DIR = REPO_ROOT / ".codex" / "state"
+STATE_ROOT = Path(os.environ.get("HARNESS_STATE_ROOT", REPO_ROOT))
+STATE_DIR = STATE_ROOT / ".codex" / "state"
 
 _SHARED = REPO_ROOT / ".agents" / "shared"
 if str(_SHARED) not in sys.path:
     sys.path.insert(0, str(_SHARED))
+
+try:
+    from harness_debug import debug_log  # noqa: E402
+except Exception:  # noqa: BLE001
+
+    def debug_log(event: str, exc: BaseException | None = None) -> None:
+        return
+
 
 try:
     from governor import (  # noqa: E402 — sys.path adjusted above
@@ -40,7 +50,8 @@ try:
     from governor import write_marker as _shared_write_marker  # noqa: E402
 
     _SHARED_OK = True
-except Exception:  # noqa: BLE001 — HC-5.5 fail-open
+except Exception as exc:  # noqa: BLE001 — HC-5.5 fail-open
+    debug_log("codex user-prompt shared import failed", exc)
     PROMPT_RULES = []  # type: ignore[assignment]
     TOKEN_REGEX = None  # type: ignore[assignment]
     Blocked = None  # type: ignore[assignment,misc]
@@ -78,7 +89,8 @@ def main() -> int:
 
     try:
         result = safe_parse_exception_token(prompt)
-    except Exception:  # noqa: BLE001 — HC-5.5 fail-open
+    except Exception as exc:  # noqa: BLE001 — HC-5.5 fail-open
+        debug_log("codex user-prompt token parse failed", exc)
         return 0
 
     if Blocked is not None and isinstance(result, Blocked):
@@ -97,8 +109,10 @@ def main() -> int:
         return 0
 
     if ParsedToken is not None and isinstance(result, ParsedToken):
-        with contextlib.suppress(Exception):  # HC-5.5 fail-open
+        try:
             write_marker(result.payload)
+        except Exception as exc:  # noqa: BLE001 — HC-5.5 fail-open
+            debug_log("codex user-prompt marker write failed", exc)
         print(json.dumps(result.payload, ensure_ascii=False), file=sys.stderr)
 
     # Work-ledger: persist last_prompt for cross-session context continuity.

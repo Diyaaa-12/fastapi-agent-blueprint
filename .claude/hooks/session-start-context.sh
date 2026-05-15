@@ -8,8 +8,9 @@ set -euo pipefail
 HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "${HOOK_DIR}/../.." && pwd)"
 SHARED_DIR="${REPO_ROOT}/.agents/shared"
+PY_LAUNCHER="${REPO_ROOT}/.agents/shared/harness-python.sh"
 
-SUMMARY=$(PYTHONPATH="${SHARED_DIR}" python3 -c "
+SUMMARY=$(PYTHONPATH="${SHARED_DIR}" sh "$PY_LAUNCHER" -c "
 import sys
 sys.path.insert(0, '${SHARED_DIR}')
 try:

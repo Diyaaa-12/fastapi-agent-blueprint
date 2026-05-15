@@ -45,12 +45,14 @@ from __future__ import annotations
 
 import contextlib
 import json
+import os
 import subprocess
 from datetime import UTC, datetime, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-STATE_DIR = REPO_ROOT / ".agents" / "state"
+STATE_ROOT = Path(os.environ.get("HARNESS_STATE_ROOT", REPO_ROOT))
+STATE_DIR = STATE_ROOT / ".agents" / "state"
 LEDGER_PATH = STATE_DIR / "current-work.json"
 
 SCHEMA_VERSION = 1
