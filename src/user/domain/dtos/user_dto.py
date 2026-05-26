@@ -15,6 +15,15 @@ class UserDTO(BaseModel):
     email: str = Field(..., description="Email address")
     password: str = Field(..., description="Password")
     role: UserRole = Field(default=USER_ROLE_USER, description="User role")
+    password_temporary: bool = Field(
+        default=False, description="Must change password on next login"
+    )
+    permissions: list[str] = Field(
+        default_factory=list, description="Admin page permission keys"
+    )
+    is_bootstrap_admin: bool = Field(
+        default=False, description="Seeded bootstrap account marker"
+    )
     created_at: datetime = Field(..., description="Created at")
     updated_at: datetime = Field(..., description="Updated at")
 
@@ -28,3 +37,20 @@ class BootstrapAdminUserDTO(BaseModel):
 
 class UpdateUserRoleDTO(BaseModel):
     role: UserRole
+
+
+class UpdateAdminPermissionsDTO(BaseModel):
+    permissions: list[str] = Field(default_factory=list)
+
+
+class ChangePasswordDTO(BaseModel):
+    current_password: str = Field(min_length=1, max_length=255)
+    new_password: str = Field(min_length=8, max_length=255)
+    confirm_password: str = Field(min_length=8, max_length=255)
+
+
+class CreateAdminAccountDTO(BaseModel):
+    username: str = Field(min_length=1, max_length=20)
+    full_name: str = Field(min_length=1, max_length=255)
+    email: EmailStr = Field(max_length=255)
+    permissions: list[str] = Field(default_factory=list)
