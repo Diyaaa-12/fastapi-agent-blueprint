@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 UserRole = Literal["user", "admin"]
 USER_ROLE_USER: UserRole = "user"
@@ -21,6 +21,12 @@ class UserDTO(BaseModel):
     permissions: list[str] = Field(
         default_factory=list, description="Admin page permission keys"
     )
+
+    @field_validator("permissions", mode="before")
+    @classmethod
+    def _coerce_null_permissions(cls, v: object) -> object:
+        return [] if v is None else v
+
     is_bootstrap_admin: bool = Field(
         default=False, description="Seeded bootstrap account marker"
     )

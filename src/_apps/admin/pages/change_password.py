@@ -1,6 +1,7 @@
 from nicegui import ui
 
 from src._core.infrastructure.admin.auth import (
+    AdminAuthProvider,
     get_admin_account_use_case,
     require_auth_allowlisted,
 )
@@ -64,6 +65,7 @@ async def change_password_page():
                 return
 
             ui.notify("Password changed successfully", type="positive")
+            AdminAuthProvider.logout()
             ui.navigate.to("/admin/login")
 
         ui.button("Change Password", on_click=do_change).classes(
