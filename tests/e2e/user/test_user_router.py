@@ -35,7 +35,9 @@ async def admin_override():
 async def _promote_to_admin(test_db, user_id: int) -> None:
     async with test_db.session() as session:
         await session.execute(
-            update(UserModel).where(UserModel.id == user_id).values(role="admin")
+            update(UserModel)
+            .where(UserModel.id == user_id)
+            .values(role=USER_ROLE_ADMIN)
         )
         await session.commit()
 
