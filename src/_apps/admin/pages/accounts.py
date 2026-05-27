@@ -36,10 +36,16 @@ async def accounts_page():
     admins_container = ui.column().classes("w-full q-gutter-sm")
 
     async def refresh_list():
-        admins = await use_case.list_admin_accounts()
-        admins_container.clear()
-        with admins_container:
-            _render_admin_list(admins, session.user_id, all_keys, refresh_list)
+        # Defensive: this also runs after a successful create/update/delete
+        # (outside those callbacks' try blocks), so a refresh-time failure must
+        # still route through the central handler rather than escaping uncaught.
+        try:
+            admins = await use_case.list_admin_accounts()
+            admins_container.clear()
+            with admins_container:
+                _render_admin_list(admins, session.user_id, all_keys, refresh_list)
+        except Exception as exc:  # noqa: BLE001 - delegated to AdminErrorHandler
+            await AdminErrorHandler.handle(exc, context="admin_accounts_refresh")
 
     # ── Create admin form ──
     with ui.expansion("Create New Admin", icon="person_add").classes("w-full q-mb-md"):

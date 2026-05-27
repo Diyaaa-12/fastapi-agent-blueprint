@@ -42,6 +42,18 @@ def _is_user_safe(exc: Exception) -> bool:
     return isinstance(exc, BaseCustomException) and exc.status_code < 500
 
 
+def _current_admin_user() -> str | None:
+    """Best-effort admin username for log context.
+
+    Returns ``None`` when NiceGUI session storage is unavailable — e.g. when the
+    global ``on_exception`` handler fires outside a client/request context.
+    """
+    try:
+        return app.storage.user.get("username")
+    except Exception:  # noqa: BLE001 - storage unavailable outside a request scope
+        return None
+
+
 class AdminErrorHandler:
     """Shared admin error surface: sanitized notify + structured log + escalate."""
 
@@ -60,7 +72,7 @@ class AdminErrorHandler:
             _logger.warning(
                 "admin_page_error",
                 context=context,
-                admin_user=app.storage.user.get("username"),
+                admin_user=_current_admin_user(),
                 error_type=type(exc).__name__,
                 error_code=error_code,
             )
@@ -69,7 +81,7 @@ class AdminErrorHandler:
                 "admin_page_error",
                 exc_info=exc,
                 context=context,
-                admin_user=app.storage.user.get("username"),
+                admin_user=_current_admin_user(),
                 error_type=type(exc).__name__,
                 error_code=error_code,
             )
@@ -119,3 +131,18 @@ def admin_error_boundary(context: str = "", critical: bool = False) -> Callable[
         return wrapper  # type: ignore[return-value]
 
     return decorator
+
+
+def handle_uncaught_admin_exception(exc: Exception) -> None:
+    """Global NiceGUI safety net — structured-log any uncaught admin exception.
+
+    Registered via ``app.on_exception`` in ``bootstrap_admin``. NiceGUI invokes
+    every registered handler (its default is ``log.exception``) for exceptions
+    that escape page handlers, event callbacks, and timers, so this guarantees
+    uniform structured logging even where a local ``try``/``except`` or
+    ``@admin_error_boundary`` did not catch (e.g. a post-success ``refresh``).
+
+    Log-only by design: the handler may fire outside a client/slot context where
+    ``ui.notify`` / ``ui.navigate`` are invalid, so it never touches the UI.
+    """
+    AdminErrorHandler.log_error(exc, context="admin_uncaught")

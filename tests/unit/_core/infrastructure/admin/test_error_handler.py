@@ -124,3 +124,34 @@ def test_decorator_preserves_route_parameter_injection():
     query_names = {p.name for p in route.dependant.query_params}
     assert "record_id" in path_names
     assert "page" in query_names
+
+
+def test_current_admin_user_is_none_when_storage_unavailable(monkeypatch):
+    class _NoScope:
+        @property
+        def user(self):
+            raise RuntimeError("session storage requires a request scope")
+
+    monkeypatch.setattr(eh, "app", SimpleNamespace(storage=_NoScope()))
+    assert eh._current_admin_user() is None
+
+
+def test_global_handler_logs_without_touching_ui(monkeypatch):
+    """The on_exception safety net logs centrally and never calls ui.* (it may
+    fire outside a client/slot context)."""
+    logged: list[tuple[Exception, str]] = []
+
+    def fake_log(exc, context=""):
+        logged.append((exc, context))
+
+    monkeypatch.setattr(eh.AdminErrorHandler, "log_error", staticmethod(fake_log))
+    notify = _Notify()
+    navigate = _Navigate()
+    monkeypatch.setattr(eh, "ui", SimpleNamespace(notify=notify, navigate=navigate))
+
+    exc = RuntimeError("uncaught")
+    eh.handle_uncaught_admin_exception(exc)
+
+    assert logged == [(exc, "admin_uncaught")]
+    assert notify.calls == []
+    assert navigate.target is None
