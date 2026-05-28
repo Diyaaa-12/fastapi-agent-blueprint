@@ -189,38 +189,40 @@ def _render_admin_list(
                             )
 
                             async def confirm_remove(a=a):
+                                success = False
                                 async with button_loading(remove_btn):
                                     try:
                                         await use_case.delete_account(
                                             admin_id=a.id,
                                             requesting_admin_id=requesting_admin_id,
                                         )
+                                        success = True
                                     except AdminSelfActionForbiddenException:
                                         ui.notify(
                                             "Cannot remove your own account",
                                             type="negative",
                                         )
-                                        dlg.close()
-                                        return
                                     except AdminLastAccountsGuardException:
                                         ui.notify(
                                             "Cannot remove the last accounts-permission holder",
                                             type="negative",
                                         )
-                                        dlg.close()
-                                        return
                                     except Exception as exc:  # noqa: BLE001 - delegated
-                                        dlg.close()
                                         await AdminErrorHandler.handle(
                                             exc, context="admin_account_delete"
                                         )
-                                        return
-                                ui.notify(
-                                    "Admin '" + a.username + "' removed",
-                                    type="positive",
-                                )
+                                # Keep dlg.close() / refresh outside the loading
+                                # context (§11 convention) — button is still
+                                # alive here, the dialog hide happens after the
+                                # loading state has cleared.
+                                if success:
+                                    ui.notify(
+                                        "Admin '" + a.username + "' removed",
+                                        type="positive",
+                                    )
                                 dlg.close()
-                                await refresh_cb()
+                                if success:
+                                    await refresh_cb()
 
                             with ui.row():
                                 remove_btn = ui.button(

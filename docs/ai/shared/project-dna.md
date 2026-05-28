@@ -766,7 +766,7 @@ Quickstart prints the seeded `admin / admin` credentials only when `ENV=quicksta
 ### Loading states (#198)
 
 - **Async write buttons**: wrap the slow `await` in `async with button_loading(btn)` (`layout.py`) — it sets Quasar `loading`+`disable` and always clears in `finally`. Keep navigation / `dlg.close()` / list-refresh *outside* the `async with` so the button is not toggled after it may be torn down.
-- **Page data loading**: `BaseAdminPage.render_list/render_detail` render a structure-mirroring skeleton, `await ui.context.client.connected()` before the fetch (so the skeleton is actually flushed to the client during a slow load), and delete the skeleton in `finally`. One change covers all domain pages; custom non-`BaseAdminPage` content areas use `ui.spinner` for inline feedback.
+- **Page data loading**: `BaseAdminPage.render_list/render_detail` render a structure-mirroring skeleton, `await ui.context.client.connected()` before the fetch (so the skeleton is actually flushed to the client during a slow load), and delete the skeleton in `finally`. One change covers all domain pages; custom non-`BaseAdminPage` content areas (e.g. `docs_query_page`, `ai_usage_summary_page`) should provide appropriate inline feedback (e.g. `ui.spinner`) for their own slow fetches.
 
 ## §12. S3 Vector Store Pattern
 
