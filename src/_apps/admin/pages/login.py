@@ -1,3 +1,4 @@
+from fastapi import Request
 from nicegui import app, ui
 
 from src._core.infrastructure.admin.auth import (
@@ -13,7 +14,12 @@ from src.auth.domain.exceptions.auth_exceptions import (
 
 
 @ui.page("/admin/login")
-def login_page():
+def login_page(request: Request):
+    # Capture client IP best-effort for the audit log (#196). Behind a trusted
+    # proxy you would need to parse X-Forwarded-For instead; that requires
+    # explicit proxy-trust configuration so we don't do it implicitly here.
+    client_ip = request.client.host if request.client else None
+
     with ui.card().classes("absolute-center w-80"):
         ui.label("Admin Login").classes("text-h5 q-mb-md")
         username = ui.input("Username").classes("full-width")
@@ -28,6 +34,7 @@ def login_page():
                     session = await get_admin_auth_provider().authenticate(
                         username.value,
                         password.value,
+                        ip_address=client_ip,
                     )
                 except AdminSetupRequiredException:
                     app.storage.user["setup_granted"] = True

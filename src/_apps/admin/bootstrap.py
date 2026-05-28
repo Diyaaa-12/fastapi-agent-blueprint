@@ -14,6 +14,13 @@ from src._apps.admin.pages import (
     setup,  # noqa: F401 (registers @ui.page)
 )
 from src._core.config import settings
+from src._core.infrastructure.admin.audit import (  # noqa: F401 — also registers AdminAuditLog on Base.metadata for quickstart create_all()
+    AdminAuditLogRepository,
+)
+from src._core.infrastructure.admin.audit.logger import (
+    AuditLogger,
+    configure_audit_logger,
+)
 from src._core.infrastructure.admin.auth import (
     AdminAuthProvider,
     configure_admin_account_use_case_provider,
@@ -51,6 +58,9 @@ def bootstrap_admin(fastapi_app: FastAPI) -> None:
             auth_use_case_provider=admin_container.auth_container.auth_use_case
         )
     )
+    # Wire the audit logger (#196 Phase 1) before any admin action can fire.
+    database = admin_container.core_container.database()
+    configure_audit_logger(AuditLogger(AdminAuditLogRepository(database)))
     configure_admin_account_use_case_provider(
         admin_container.auth_container.admin_account_use_case
     )
