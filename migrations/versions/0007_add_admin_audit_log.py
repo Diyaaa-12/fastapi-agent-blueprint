@@ -22,7 +22,11 @@ def upgrade() -> None:
     op.create_table(
         "admin_audit_log",
         sa.Column(
-            "id", sa.BigInteger(), primary_key=True, autoincrement=True, nullable=False
+            "id",
+            sa.BigInteger().with_variant(sa.Integer(), "sqlite"),
+            primary_key=True,
+            autoincrement=True,
+            nullable=False,
         ),
         sa.Column(
             "admin_user_id",

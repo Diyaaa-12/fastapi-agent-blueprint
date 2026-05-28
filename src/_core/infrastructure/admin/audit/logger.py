@@ -66,43 +66,42 @@ class AuditLogger:
         attribute the failure to a stale session.
         """
 
-        # Actor / correlation auto-fill — only when caller did not pass.
-        if admin_user_id is _UNSET:
-            admin_user_id = _safe_session_get("user_id")
-        if admin_username is _UNSET:
-            admin_username = _safe_session_get("username") or "unknown"
-        # Defensive: if explicit None was passed for username, persist as
-        # "unknown" — the column is NOT NULL.
-        if admin_username is None:
-            admin_username = "unknown"
-
-        dto = AuditLogDTO(
-            admin_user_id=admin_user_id,
-            admin_username=admin_username,
-            action=action,
-            domain=domain,
-            record_id=record_id,
-            before_state=before_state,
-            after_state=after_state,
-            result=result,
-            failure_reason=failure_reason,
-            ip_address=ip_address,
-            correlation_id=_safe_correlation_id(),
-        )
-
+        # Wrap the ENTIRE operation — actor fill, DTO construction, AND insert —
+        # in a single try/except so a malformed input or storage-access bug
+        # cannot propagate into the caller and break a login or write action.
         try:
+            if admin_user_id is _UNSET:
+                admin_user_id = _safe_session_get("user_id")
+            if admin_username is _UNSET:
+                admin_username = _safe_session_get("username") or "unknown"
+            # Defensive: explicit None ⇒ "unknown" (column is NOT NULL).
+            if admin_username is None:
+                admin_username = "unknown"
+
+            dto = AuditLogDTO(
+                admin_user_id=admin_user_id,
+                admin_username=admin_username,
+                action=action,
+                domain=domain,
+                record_id=record_id,
+                before_state=before_state,
+                after_state=after_state,
+                result=result,
+                failure_reason=failure_reason,
+                ip_address=ip_address,
+                correlation_id=_safe_correlation_id(),
+            )
             await self._repository.insert(dto)
         except Exception as exc:  # noqa: BLE001 - swallowed by design
-            # An audit-write failure must not break the user's action. We log
-            # the dropped event server-side (structured) with enough context to
-            # reconstruct it offline.
+            # The dropped event is reconstructable from these non-sensitive
+            # fields only (no before_state/after_state/failure_reason — they
+            # may contain detail not yet vetted by the whitelist).
             _logger.warning(
                 "audit_write_failed",
                 exc_info=exc,
-                action=action.value,
+                action=getattr(action, "value", str(action)),
                 domain=domain,
-                result=result.value,
-                admin_username=admin_username,
+                result=getattr(result, "value", str(result)),
                 error_type=type(exc).__name__,
             )
 
@@ -128,15 +127,17 @@ class _NoopAuditLogger:
     """Silent fallback used when ``configure_audit_logger`` has not been called.
 
     Honours the never-raise invariant — an admin runtime mis-wiring must not
-    break logins or other user actions. Emits one structlog warning per
-    process so the missing wiring is still visible in logs without spamming.
+    break logins or other user actions. Emits ONE no-payload warning per
+    process so the missing wiring is still visible in logs without spamming and
+    without forwarding any caller-supplied audit fields (before_state /
+    failure_reason / etc. may contain detail not yet vetted for log emission).
     """
 
     _warned: bool = False
 
     async def log(self, **kwargs: object) -> None:  # signature-compatible
         if not _NoopAuditLogger._warned:
-            _logger.warning("audit_logger_not_configured", **kwargs)
+            _logger.warning("audit_logger_not_configured")
             _NoopAuditLogger._warned = True
 
 

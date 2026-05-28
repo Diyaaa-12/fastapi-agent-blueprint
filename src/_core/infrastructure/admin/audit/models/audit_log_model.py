@@ -39,7 +39,14 @@ class AdminAuditLog(Base):
         Index("idx_audit_domain_created", "domain", "created_at"),
     )
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    # BigInteger for prod (Postgres) so the audit log doesn't outgrow INT range;
+    # SQLite variant uses INTEGER because SQLite autoincrement is gated to that
+    # type. Mirrors the pattern in ``ai_usage.AIUsageLogModel``.
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"),
+        primary_key=True,
+        autoincrement=True,
+    )
 
     # FK to user.id, SET NULL on delete; ``admin_username`` survives as the
     # durable actor reference.
