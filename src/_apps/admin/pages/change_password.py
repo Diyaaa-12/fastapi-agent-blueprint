@@ -1,5 +1,10 @@
 from nicegui import ui
 
+from src._core.infrastructure.admin.audit import (
+    AdminAction,
+    AuditResult,
+    get_audit_logger,
+)
 from src._core.infrastructure.admin.auth import (
     AdminAuthProvider,
     get_admin_account_use_case,
@@ -63,13 +68,34 @@ async def change_password_page():
                         current_password=current_pw.value,
                         new_password=new_pw.value,
                     )
-                except InvalidCredentialsException:
+                except InvalidCredentialsException as exc:
+                    await get_audit_logger().log(
+                        action=AdminAction.PASSWORD_CHANGE,
+                        domain="auth",
+                        result=AuditResult.FAILURE,
+                        record_id=str(session.user_id),
+                        failure_reason=exc.error_code,
+                    )
                     ui.notify("Current password is incorrect", type="negative")
                     return
                 except Exception as exc:  # noqa: BLE001 - delegated to handler
+                    await get_audit_logger().log(
+                        action=AdminAction.PASSWORD_CHANGE,
+                        domain="auth",
+                        result=AuditResult.FAILURE,
+                        record_id=str(session.user_id),
+                        failure_reason=getattr(exc, "error_code", None)
+                        or type(exc).__name__,
+                    )
                     await AdminErrorHandler.handle(exc, context="admin_change_password")
                     return
 
+            await get_audit_logger().log(
+                action=AdminAction.PASSWORD_CHANGE,
+                domain="auth",
+                result=AuditResult.SUCCESS,
+                record_id=str(session.user_id),
+            )
             ui.notify("Password changed successfully", type="positive")
             AdminAuthProvider.logout()
             ui.navigate.to("/admin/login")

@@ -1,6 +1,12 @@
 from nicegui import app, ui
 
 from src._core.config import settings
+from src._core.infrastructure.admin.audit import (
+    AdminAction,
+    AuditResult,
+    get_audit_logger,
+    safe_user_snapshot,
+)
 from src._core.infrastructure.admin.auth import (
     AdminAuthProvider,
     get_admin_account_use_case,
@@ -60,11 +66,26 @@ async def setup_page():
                         email=email,
                         bootstrap_username=settings.admin_bootstrap_username,
                     )
-                except AdminSetupForbiddenException:
+                except AdminSetupForbiddenException as exc:
                     setup_already_complete = True
+                    await get_audit_logger().log(
+                        action=AdminAction.FIRST_ADMIN_CREATE,
+                        domain="auth",
+                        result=AuditResult.FAILURE,
+                        admin_username=username,
+                        failure_reason=exc.error_code,
+                    )
                 except Exception as exc:  # noqa: BLE001 - delegated to handler
                     # Includes UserAlreadyExistsException (4xx) → AdminErrorHandler
                     # surfaces exc.message as a warning and logs with context.
+                    await get_audit_logger().log(
+                        action=AdminAction.FIRST_ADMIN_CREATE,
+                        domain="auth",
+                        result=AuditResult.FAILURE,
+                        admin_username=username,
+                        failure_reason=getattr(exc, "error_code", None)
+                        or type(exc).__name__,
+                    )
                     await AdminErrorHandler.handle(exc, context="admin_setup_create")
                     return
             # Navigate only after loading state is cleared (button not yet torn down).
@@ -72,6 +93,16 @@ async def setup_page():
                 ui.notify("Setup is already complete. Please log in.", type="warning")
                 ui.navigate.to("/admin/login")
                 return
+
+            await get_audit_logger().log(
+                action=AdminAction.FIRST_ADMIN_CREATE,
+                domain="auth",
+                result=AuditResult.SUCCESS,
+                admin_user_id=new_admin.id,
+                admin_username=new_admin.username,
+                record_id=str(new_admin.id),
+                after_state=safe_user_snapshot(new_admin),
+            )
 
             # Clear bootstrap session flag; user must log in as the new admin.
             AdminAuthProvider.logout()

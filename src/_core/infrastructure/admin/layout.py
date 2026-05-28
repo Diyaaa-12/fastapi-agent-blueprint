@@ -6,6 +6,11 @@ from typing import TYPE_CHECKING
 
 from nicegui import ui
 
+from src._core.infrastructure.admin.audit import (
+    AdminAction,
+    AuditResult,
+    get_audit_logger,
+)
 from src._core.infrastructure.admin.auth import AdminAuthProvider
 from src.auth.domain.dtos.auth_dto import AdminSessionDTO
 
@@ -120,6 +125,19 @@ def _app_username() -> str | None:
 app_username = _app_username
 
 
-def _handle_logout() -> None:
+async def _handle_logout() -> None:
+    # Record the user-initiated logout BEFORE the session is cleared (#196).
+    # AdminAuthProvider.logout() is also called from several non-user cleanup
+    # paths (forced-logout, setup tear-down, ...), so audit logging lives here
+    # — the explicit button — rather than inside logout().
+    from nicegui import app as _app
+
+    await get_audit_logger().log(
+        action=AdminAction.LOGOUT,
+        domain="auth",
+        result=AuditResult.SUCCESS,
+        admin_user_id=_app.storage.user.get("user_id"),
+        admin_username=_app.storage.user.get("username") or "unknown",
+    )
     AdminAuthProvider.logout()
     ui.navigate.to("/admin/login")
