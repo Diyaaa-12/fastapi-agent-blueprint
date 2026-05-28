@@ -150,6 +150,29 @@ async def test_log_caller_overrides_session_actor(session_storage):
 
 
 @pytest.mark.asyncio
+async def test_log_clamps_overlong_admin_username(session_storage):
+    """LOGIN-failure path can be handed an arbitrary submitted username — the
+    audit row must still persist even if the value exceeds the column width."""
+    repo = _RecordingRepository()
+    logger = AuditLogger(repo)
+
+    overlong = "x" * 1000
+
+    await logger.log(
+        action=AdminAction.LOGIN,
+        domain="auth",
+        result=AuditResult.FAILURE,
+        admin_user_id=None,
+        admin_username=overlong,
+        failure_reason="INVALID_CREDENTIALS",
+    )
+
+    dto = repo.inserted[-1]
+    assert len(dto.admin_username) == 255
+    assert dto.admin_username == overlong[:255]
+
+
+@pytest.mark.asyncio
 async def test_log_swallows_repository_errors(session_storage):
     """Audit write must never raise into the caller (codex must-fix)."""
     repo = _RecordingRepository(raise_on_insert=True)

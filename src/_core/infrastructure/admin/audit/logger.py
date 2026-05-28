@@ -36,6 +36,12 @@ _logger = structlog.stdlib.get_logger(__name__)
 # storage value would falsely attribute the failure to a logged-in user.
 _UNSET = object()
 
+# Match the ``admin_audit_log.admin_username`` column width. The LOGIN FAILURE
+# path logs whatever the operator typed; a hostile / malformed value longer
+# than the column would otherwise make the insert fail and (per the never-raise
+# invariant) silently drop the audit row for that rejected login.
+_ADMIN_USERNAME_MAX = 255
+
 
 class AuditLogger:
     """Thin facade callers use to record an audit entry."""
@@ -77,6 +83,10 @@ class AuditLogger:
             # Defensive: explicit None ⇒ "unknown" (column is NOT NULL).
             if admin_username is None:
                 admin_username = "unknown"
+            # Clamp to the column width so an overlong / hostile login-failure
+            # username cannot make the audit insert silently drop.
+            if len(admin_username) > _ADMIN_USERNAME_MAX:
+                admin_username = admin_username[:_ADMIN_USERNAME_MAX]
 
             dto = AuditLogDTO(
                 admin_user_id=admin_user_id,
