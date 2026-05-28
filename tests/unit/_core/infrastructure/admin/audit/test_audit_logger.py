@@ -10,13 +10,15 @@ import pytest
 from src._core.infrastructure.admin.audit import (
     AdminAction,
     AuditLogDTO,
-    AuditLogger,
     AuditResult,
-    configure_audit_logger,
-    get_audit_logger,
     safe_user_snapshot,
 )
 from src._core.infrastructure.admin.audit import logger as logger_module
+from src._core.infrastructure.admin.audit.logger import (
+    AuditLogger,
+    configure_audit_logger,
+    get_audit_logger,
+)
 from src.user.domain.dtos.user_dto import USER_ROLE_ADMIN, UserDTO
 
 # ── safe_user_snapshot whitelist ─────────────────────────────────────────────

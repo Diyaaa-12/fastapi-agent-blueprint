@@ -12,12 +12,9 @@ from types import SimpleNamespace
 import pytest
 
 from src._core.infrastructure.admin import auth as admin_auth
-from src._core.infrastructure.admin.audit import (
-    AdminAction,
-    AuditResult,
-    configure_audit_logger,
-)
+from src._core.infrastructure.admin.audit import AdminAction, AuditResult
 from src._core.infrastructure.admin.audit import logger as audit_logger_module
+from src._core.infrastructure.admin.audit.logger import configure_audit_logger
 from src.auth.domain.dtos.auth_dto import AdminSessionDTO
 from src.auth.domain.exceptions.auth_exceptions import InvalidCredentialsException
 from src.user.domain.dtos.user_dto import USER_ROLE_ADMIN

@@ -7,11 +7,8 @@ from nicegui import app, ui
 from pydantic import ValidationError
 
 from src._core.exceptions.base_exception import BaseCustomException
-from src._core.infrastructure.admin.audit import (
-    AdminAction,
-    AuditResult,
-    get_audit_logger,
-)
+from src._core.infrastructure.admin.audit import AdminAction, AuditResult
+from src._core.infrastructure.admin.audit.logger import get_audit_logger
 from src.auth.application.use_cases.admin_account_use_case import AdminAccountUseCase
 from src.auth.application.use_cases.auth_use_case import AuthUseCase
 from src.auth.domain.dtos.auth_dto import AdminSessionDTO

@@ -16,6 +16,8 @@ from src._apps.admin.pages import (
 from src._core.config import settings
 from src._core.infrastructure.admin.audit import (  # noqa: F401 — also registers AdminAuditLog on Base.metadata for quickstart create_all()
     AdminAuditLogRepository,
+)
+from src._core.infrastructure.admin.audit.logger import (
     AuditLogger,
     configure_audit_logger,
 )

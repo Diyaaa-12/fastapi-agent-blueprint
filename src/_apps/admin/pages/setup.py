@@ -4,9 +4,9 @@ from src._core.config import settings
 from src._core.infrastructure.admin.audit import (
     AdminAction,
     AuditResult,
-    get_audit_logger,
     safe_user_snapshot,
 )
+from src._core.infrastructure.admin.audit.logger import get_audit_logger
 from src._core.infrastructure.admin.auth import (
     AdminAuthProvider,
     get_admin_account_use_case,
