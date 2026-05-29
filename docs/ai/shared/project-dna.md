@@ -6,7 +6,7 @@
 > This file is auto-extracted/updated from `src/user/` (reference domain) and `src/_core/` (Base classes)
 > when `/sync-guidelines` is run. **Run `/sync-guidelines` instead of editing manually.**
 >
-> Last updated: 2026-05-29 (#197 Phase 1+2 — PydanticAI prompt-injection guardrails structural baseline)
+> Last updated: 2026-05-29 (#209 / #197 Phase 3 — runtime prompt-injection guard + PII output validator)
 
 ## Section Index
 §0 Project Scale and Design Philosophy |
@@ -983,6 +983,13 @@ classification_service = providers.Factory(ClassificationService, classifier=cla
 - Structured output via `Agent[DepsType, OutputType]` — type-checked at build time
 - Domain service injects `ClassifierProtocol` (or equivalent), not `llm_model` directly
 - ADR 043: Domain → Protocol → Infra Adapter → Selector is the canonical AI feature pattern
+
+### Prompt-injection guardrails (#197)
+
+Two layers, both living at the **adapter** boundary (not the PydanticAI Hooks/capabilities API — the adapters own the call sites, so plain functions are simpler, fully testable, and version-decoupled):
+
+- **Structural (Phase 1+2, PR #208)**: `instructions=` over `system_prompt=`; every dynamic prompt field escaped via `escape_for_prompt_xml` and wrapped in named XML boundary tags; instruction constants typed `Final[LiteralString]`. See §14 code comments + `src/_core/infrastructure/llm/prompt_boundaries.py`.
+- **Runtime (Phase 3, #209)**: `src/_core/infrastructure/llm/guardrails.py` plain functions. `detect_prompt_injection` (input guard, scans every user-supplied field — RAG question; classifier `text` + each `categories` label — before `agent.run()`, raises `PromptInjectionDetected` 400). RAG output guard diffs `scan_pii(answer)` vs PII in `source_title`+`content` of the chunks and raises `GuardrailBlocked` 422 on fabrication; verbatim prompt-leak is log-only. `GUARDRAILS_ENABLED` (default True) is the DI-wired kill-switch. Guardrail exceptions carry no `details` (handler serializes `exc.details` to the response). Out of scope until a later phase: `Document.trust_level`, base64/ROT13 decode, classifier output guard, per-user rate/budget caps (Phase 4 #210), `ai_usage.guardrail_triggered` ledger + red-team suite (Phase 5 #211).
 
 ## §15. Auth Domain Pattern
 
