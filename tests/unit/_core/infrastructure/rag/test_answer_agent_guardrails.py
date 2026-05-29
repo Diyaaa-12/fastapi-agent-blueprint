@@ -82,6 +82,29 @@ async def test_output_guard_allows_pii_present_in_context() -> None:
 
 
 @pytest.mark.asyncio
+async def test_output_guard_does_not_block_fabricated_phone() -> None:
+    """Phone is a fuzzy signal (collides with dates / invoice numbers / IDs),
+    so fabricated phone is logged but NOT blocked — only email/ipv4 block
+    (codex completion-gate MEDIUM)."""
+    agent = _agent("Reach the team at 555-987-6543 anytime.")
+    result = await agent.answer(
+        "How do I contact them?", [_chunk("No contact info here.")]
+    )
+    assert "555-987-6543" in result.answer  # not blocked
+
+
+@pytest.mark.asyncio
+async def test_output_guard_does_not_block_date_like_number() -> None:
+    """A legit answer citing a timestamp must not be wrongly blocked as a
+    fabricated phone number."""
+    agent = _agent("The incident occurred on 2026-05-29 12:34 UTC.")
+    result = await agent.answer(
+        "When did it happen?", [_chunk("An incident report without that exact time.")]
+    )
+    assert "2026-05-29" in result.answer  # not blocked
+
+
+@pytest.mark.asyncio
 async def test_output_guard_allows_pii_in_title() -> None:
     """PII carried by the chunk source_title (which reaches the prompt) must
     count as context — not fabrication."""

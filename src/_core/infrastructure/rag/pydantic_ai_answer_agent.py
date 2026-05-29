@@ -38,6 +38,12 @@ _PERSONA: Final[LiteralString] = (
 # wrapped content as untrusted DATA" guidance for the model.
 _INSTRUCTIONS: Final[LiteralString] = _PERSONA + RAG_INSTRUCTIONS_TAIL
 
+# PII token types precise enough to BLOCK on fabrication. ``email`` (``@`` anchor)
+# and ``ipv4`` (range-validated dotted quad) rarely collide with non-PII text;
+# ``phone`` is a bare digit run that collides with dates / invoice numbers / IDs,
+# so phone fabrication is logged but NOT blocked (codex completion-gate MEDIUM).
+_BLOCKING_PII_TYPES: Final[frozenset[str]] = frozenset({"email", "ipv4"})
+
 
 class _AgentAnswer(BaseModel):
     """Structured output requested from the LLM.
@@ -99,13 +105,20 @@ class PydanticAIAnswerAgent:
         return QueryAnswerDTO(answer=answer_text, citations=citations)
 
     def _check_output(self, answer_text: str, chunks: list[BaseChunkDTO]) -> None:
-        """Block fabricated PII; log (do not block) verbatim prompt leaks.
+        """Block fabricated *precise* PII; log everything else.
 
         PII fabrication = PII in the answer that is absent from every chunk
-        field that reaches the prompt (``source_title`` + ``content``). This is
-        precise by construction (only invented PII is blocked), so it raises.
-        Prompt leak is fuzzy (non-secret guidance may be paraphrased), so it is
-        log-only.
+        field that reaches the prompt (``source_title`` + ``content``).
+
+        Severity follows the precise-block / fuzzy-log doctrine BY PII TYPE:
+        ``email`` and ``ipv4`` have structural anchors (``@``, range-validated
+        dotted quad) → precise → BLOCK. ``phone`` is a bare digit run that
+        collides with dates, invoice numbers, and IDs → fuzzy → LOG-ONLY,
+        never block (a 422 on a legitimately-cited date would be a worse
+        outcome than missing an invented phone number). Verbatim prompt leak
+        is also log-only.
+
+        Only the count + token TYPES are logged — never the PII values.
         """
         context_pii: set[str] = set()
         for chunk in chunks:
@@ -114,16 +127,29 @@ class PydanticAIAnswerAgent:
 
         fabricated = scan_pii(answer_text) - context_pii
         if fabricated:
-            # Count + token TYPES only — never the PII values themselves.
-            types = sorted({token.split(":", 1)[0] for token in fabricated})
-            _logger.warning(
-                "guardrail_triggered",
-                stage="output",
-                rule="pii_fabrication",
-                count=len(fabricated),
-                types=types,
-            )
-            raise GuardrailBlocked()
+            blocking = {
+                token
+                for token in fabricated
+                if token.split(":", 1)[0] in _BLOCKING_PII_TYPES
+            }
+            fuzzy = fabricated - blocking
+            if fuzzy:
+                _logger.warning(
+                    "guardrail_triggered",
+                    stage="output",
+                    rule="pii_fabrication_fuzzy",
+                    count=len(fuzzy),
+                    types=sorted({t.split(":", 1)[0] for t in fuzzy}),
+                )
+            if blocking:
+                _logger.warning(
+                    "guardrail_triggered",
+                    stage="output",
+                    rule="pii_fabrication",
+                    count=len(blocking),
+                    types=sorted({t.split(":", 1)[0] for t in blocking}),
+                )
+                raise GuardrailBlocked()
 
         if find_prompt_leak(answer_text, _INSTRUCTIONS):
             _logger.warning("guardrail_triggered", stage="output", rule="prompt_leak")
