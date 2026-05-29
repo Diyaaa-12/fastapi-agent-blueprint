@@ -938,9 +938,11 @@ class ClassificationService:
 class PydanticAIClassifier:
     def __init__(self, llm_model: Any) -> None:
         # `instructions=` (modern PydanticAI slot) is preferred over the legacy
-        # `system_prompt=` since #197 Phase 1+2 — instructions are kept off the
-        # replayed message history and, on the OpenAI Responses provider, are
-        # transmitted as a dedicated top-level channel separate from user input.
+        # `system_prompt=` since #197 Phase 1+2 — instructions are separated from
+        # the user prompt parts and, on the OpenAI Responses provider, are sent as
+        # a dedicated top-level `instructions` field. This is NOT a secrecy
+        # boundary (PydanticAI still stores the rendered instructions on the
+        # ModelRequest); the value is separation-from-user-input, not concealment.
         # The persona prose is typed as `Final[LiteralString]` so pyright blocks
         # any future f-string interpolation of untrusted runtime data into the
         # agent's behavioural contract.
