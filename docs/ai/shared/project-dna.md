@@ -6,7 +6,7 @@
 > This file is auto-extracted/updated from `src/user/` (reference domain) and `src/_core/` (Base classes)
 > when `/sync-guidelines` is run. **Run `/sync-guidelines` instead of editing manually.**
 >
-> Last updated: 2026-05-28 (#206 admin audit log Phase 2 — UI + scheduler + cleanup)
+> Last updated: 2026-05-29 (#197 Phase 1+2 — PydanticAI prompt-injection guardrails structural baseline)
 
 ## Section Index
 §0 Project Scale and Design Philosophy |
@@ -937,14 +937,28 @@ class ClassificationService:
 # 2. Infrastructure adapter: PydanticAI Agent lives here
 class PydanticAIClassifier:
     def __init__(self, llm_model: Any) -> None:
+        # `instructions=` (modern PydanticAI slot) is preferred over the legacy
+        # `system_prompt=` since #197 Phase 1+2 — instructions are kept off the
+        # replayed message history and, on the OpenAI Responses provider, are
+        # transmitted as a dedicated top-level channel separate from user input.
+        # The persona prose is typed as `Final[LiteralString]` so pyright blocks
+        # any future f-string interpolation of untrusted runtime data into the
+        # agent's behavioural contract.
         self._agent: Agent[None, ClassificationDTO] = Agent(
             model=llm_model,
             output_type=ClassificationDTO,
-            system_prompt="...",
+            instructions=_INSTRUCTIONS,
         )
 
     async def classify(self, text: str, categories: list[str] | None = None) -> ClassificationDTO:
-        result = await self._agent.run(text)
+        # All dynamic prompt fields (user text, category labels, retrieved chunk
+        # title/content, user question) go through ``escape_for_prompt_xml`` in
+        # ``src/_core/infrastructure/llm/prompt_boundaries.py`` and are wrapped
+        # in named XML boundary tags (`<user_text>`, `<category>`, `<documents>`
+        # / `<document>` / `<title>` / `<content>`). The `instructions=` text
+        # tells the model to treat the wrapped content as untrusted DATA and
+        # NEVER follow embedded directives — see #197 Phase 1+2.
+        result = await self._agent.run(_format_prompt(text, categories))
         return result.output
 
 # 3. DI container: Selector wires real vs stub
