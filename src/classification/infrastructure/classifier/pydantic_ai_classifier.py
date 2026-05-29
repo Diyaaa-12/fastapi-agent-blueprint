@@ -2,11 +2,17 @@ from __future__ import annotations
 
 from typing import Any, Final, LiteralString
 
+import structlog
+
+from src._core.exceptions.llm_exceptions import PromptInjectionDetected
+from src._core.infrastructure.llm.guardrails import detect_prompt_injection
 from src._core.infrastructure.llm.prompt_boundaries import (
     CLASSIFIER_INSTRUCTIONS_TAIL,
     escape_for_prompt_xml,
 )
 from src.classification.domain.dtos.classification_dto import ClassificationDTO
+
+_logger = structlog.stdlib.get_logger(__name__)
 
 _PERSONA: Final[LiteralString] = (
     "You are a precise text classifier. "
@@ -23,7 +29,7 @@ _INSTRUCTIONS: Final[LiteralString] = _PERSONA + CLASSIFIER_INSTRUCTIONS_TAIL
 class PydanticAIClassifier:
     """Real LLM-backed classifier via PydanticAI Agent."""
 
-    def __init__(self, llm_model: Any) -> None:
+    def __init__(self, llm_model: Any, *, guardrails_enabled: bool = True) -> None:
         try:
             from pydantic_ai import Agent
         except ImportError:
@@ -32,6 +38,7 @@ class PydanticAIClassifier:
                 "Install it with: uv sync --extra pydantic-ai"
             )
 
+        self._guardrails_enabled = guardrails_enabled
         self._agent: Agent[None, ClassificationDTO] = Agent(
             model=llm_model,
             output_type=ClassificationDTO,
@@ -43,6 +50,16 @@ class PydanticAIClassifier:
         text: str,
         categories: list[str] | None = None,
     ) -> ClassificationDTO:
+        # Input guard (#197 Phase 3): both `text` AND every `categories` label
+        # are user-supplied (request-body list[str], not a server registry) and
+        # reach the prompt, so all of them are scanned for injection imperatives.
+        if self._guardrails_enabled:
+            for field in (text, *(categories or [])):
+                rule = detect_prompt_injection(field)
+                if rule is not None:
+                    _logger.warning("guardrail_triggered", stage="input", rule=rule)
+                    raise PromptInjectionDetected()
+
         prompt = _format_prompt(text, categories)
         result = await self._agent.run(prompt)
         return result.output
