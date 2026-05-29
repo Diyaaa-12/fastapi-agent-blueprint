@@ -1,14 +1,23 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Final, LiteralString
 
+from src._core.infrastructure.llm.prompt_boundaries import (
+    CLASSIFIER_INSTRUCTIONS_TAIL,
+    escape_for_prompt_xml,
+)
 from src.classification.domain.dtos.classification_dto import ClassificationDTO
 
-_SYSTEM_PROMPT = (
+_PERSONA: Final[LiteralString] = (
     "You are a precise text classifier. "
     "Classify the given text into one of the provided categories. "
     "Return your confidence score (0 to 1) and a brief reasoning."
 )
+
+# Concatenation of two ``LiteralString`` values is itself ``LiteralString``.
+# See the parallel constant in ``pydantic_ai_answer_agent.py`` for design
+# rationale (#197 Phase 1+2).
+_INSTRUCTIONS: Final[LiteralString] = _PERSONA + CLASSIFIER_INSTRUCTIONS_TAIL
 
 
 class PydanticAIClassifier:
@@ -26,7 +35,7 @@ class PydanticAIClassifier:
         self._agent: Agent[None, ClassificationDTO] = Agent(
             model=llm_model,
             output_type=ClassificationDTO,
-            system_prompt=_SYSTEM_PROMPT,
+            instructions=_INSTRUCTIONS,
         )
 
     async def classify(
@@ -34,10 +43,29 @@ class PydanticAIClassifier:
         text: str,
         categories: list[str] | None = None,
     ) -> ClassificationDTO:
-        prompt = text
-        if categories:
-            cats = ", ".join(categories)
-            prompt = f"Categories: {cats}\n\nText: {text}"
-
+        prompt = _format_prompt(text, categories)
         result = await self._agent.run(prompt)
         return result.output
+
+
+def _format_prompt(text: str, categories: list[str] | None) -> str:
+    """Compose the user-turn payload with XML-bounded, escape-safe wrapping.
+
+    Even though current ``categories`` come from a typed registry, every
+    label goes through :func:`escape_for_prompt_xml` so a future
+    runtime-supplied label cannot break the boundary tags. The user text
+    is wrapped in ``<user_text>`` and each label in ``<category>`` —
+    child elements, not attributes, so attribute-quote breakout is
+    impossible.
+    """
+    escaped_text = escape_for_prompt_xml(text)
+    if not categories:
+        return f"<user_text>{escaped_text}</user_text>"
+
+    cats_xml = "\n".join(
+        f"<category>{escape_for_prompt_xml(c)}</category>" for c in categories
+    )
+    return (
+        f"<categories>\n{cats_xml}\n</categories>\n"
+        f"<user_text>{escaped_text}</user_text>"
+    )
