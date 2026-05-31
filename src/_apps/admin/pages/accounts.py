@@ -10,11 +10,14 @@ from src._core.infrastructure.admin.error_handler import (
     admin_error_boundary,
 )
 from src._core.infrastructure.admin.layout import admin_layout
-from src.auth.domain.exceptions.auth_exceptions import (
+from src.admin_identity.domain.dtos.admin_identity_dto import (
+    AdminIdentityDTO,
+    CreateAdminAccountDTO,
+)
+from src.admin_identity.domain.exceptions.admin_identity_exceptions import (
     AdminLastAccountsGuardException,
     AdminSelfActionForbiddenException,
 )
-from src.user.domain.dtos.user_dto import CreateAdminAccountDTO, UserDTO
 
 # page_configs is injected by bootstrap_admin() after discovery
 page_configs: list[BaseAdminPage] = []
@@ -100,7 +103,7 @@ async def accounts_page():
 
 
 def _render_admin_list(
-    admins: list[UserDTO],
+    admins: list[AdminIdentityDTO],
     requesting_admin_id: int,
     all_keys: list[str],
     refresh_cb,

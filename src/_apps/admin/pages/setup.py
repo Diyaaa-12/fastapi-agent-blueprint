@@ -9,7 +9,9 @@ from src._core.infrastructure.admin.error_handler import (
     AdminErrorHandler,
     admin_error_boundary,
 )
-from src.auth.domain.exceptions.auth_exceptions import AdminSetupForbiddenException
+from src.admin_identity.domain.exceptions.admin_identity_exceptions import (
+    AdminSetupForbiddenException,
+)
 
 
 @ui.page("/admin/setup")
