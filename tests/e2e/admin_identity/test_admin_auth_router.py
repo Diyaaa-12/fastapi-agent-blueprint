@@ -77,6 +77,25 @@ async def test_admin_login_refresh_logout_flow():
 
 
 @pytest.mark.asyncio
+async def test_admin_token_is_rejected_on_customer_route():
+    """Reverse trust boundary: an admin-realm token must NOT authenticate on a
+    customer route (/v1/auth/me) — it fails the customer verifier."""
+    await _seed_real_admin("crossadmin", "RealAdminPass123")
+
+    async with _client() as client:
+        login = await client.post(
+            "/v1/admin/login",
+            json={"username": "crossadmin", "password": "RealAdminPass123"},
+        )
+        admin_token = login.json()["data"]["accessToken"]
+        me = await client.get(
+            "/v1/auth/me", headers={"Authorization": f"Bearer {admin_token}"}
+        )
+
+    assert me.status_code == 401, me.text
+
+
+@pytest.mark.asyncio
 async def test_admin_login_rejects_wrong_password():
     await _seed_real_admin("pwadmin", "RealAdminPass123")
 

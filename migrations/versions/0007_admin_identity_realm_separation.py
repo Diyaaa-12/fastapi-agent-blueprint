@@ -79,18 +79,33 @@ def upgrade() -> None:
     )
 
     # 3) Move existing admins out of the user table into admin_identity.
+    #    Preserve id + timestamps: any in-flight NiceGUI admin session stores the
+    #    old user.id and re-fetches the admin by it (refresh_session), so a
+    #    re-keyed id would resolve a stale cookie to a DIFFERENT admin. Keeping
+    #    the id stable makes the realm move transparent to live sessions and
+    #    keeps the downgrade faithful.
     op.execute(
         """
         INSERT INTO admin_identity (
-            username, full_name, email, password,
-            permissions, password_temporary, is_bootstrap_admin
+            id, username, full_name, email, password,
+            permissions, password_temporary, is_bootstrap_admin,
+            created_at, updated_at
         )
-        SELECT username, full_name, email, password,
-               permissions, password_temporary, is_bootstrap_admin
+        SELECT id, username, full_name, email, password,
+               permissions, password_temporary, is_bootstrap_admin,
+               created_at, updated_at
         FROM "user"
         WHERE role = 'admin'
         """
     )
+    # Advance the PK sequence past the migrated ids (Postgres only; SQLite/MySQL
+    # derive the next autoincrement from MAX(id) automatically).
+    bind = op.get_bind()
+    if bind.dialect.name == "postgresql":
+        op.execute(
+            "SELECT setval(pg_get_serial_sequence('admin_identity', 'id'), "
+            "COALESCE((SELECT MAX(id) FROM admin_identity), 1))"
+        )
 
     # 4) Remove the migrated admins from the user table. Their customer
     #    refresh_token rows (if any) cascade away via the FK.
@@ -132,18 +147,26 @@ def downgrade() -> None:
         batch_op.alter_column("password_temporary", nullable=False)
         batch_op.alter_column("is_bootstrap_admin", nullable=False)
 
-    # 2) Move admins back into the user table.
+    # 2) Move admins back into the user table (id + timestamps preserved).
     op.execute(
         """
         INSERT INTO "user" (
-            username, full_name, email, password,
-            role, permissions, password_temporary, is_bootstrap_admin
+            id, username, full_name, email, password,
+            role, permissions, password_temporary, is_bootstrap_admin,
+            created_at, updated_at
         )
-        SELECT username, full_name, email, password,
-               'admin', permissions, password_temporary, is_bootstrap_admin
+        SELECT id, username, full_name, email, password,
+               'admin', permissions, password_temporary, is_bootstrap_admin,
+               created_at, updated_at
         FROM admin_identity
         """
     )
+    bind = op.get_bind()
+    if bind.dialect.name == "postgresql":
+        op.execute(
+            "SELECT setval(pg_get_serial_sequence('user', 'id'), "
+            "COALESCE((SELECT MAX(id) FROM \"user\"), 1))"
+        )
 
     # 3) Drop the admin realm tables.
     op.drop_index(

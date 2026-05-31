@@ -16,6 +16,7 @@ from src.admin_identity.domain.dtos.admin_identity_dto import AdminRefreshTokenD
 from src.admin_identity.domain.exceptions.admin_identity_exceptions import (
     AdminInvalidCredentialsException,
     AdminInvalidTokenException,
+    AdminRefreshTokenRevokedException,
 )
 from src.admin_identity.domain.services.admin_auth_service import AdminAuthService
 from tests.factories.admin_identity_factory import (
@@ -135,6 +136,32 @@ async def test_rotate_refresh_token_issues_new_pair():
 
     assert new_access
     assert new_refresh != refresh
+
+
+@pytest.mark.asyncio
+async def test_rotated_refresh_token_cannot_be_reused():
+    """A refresh token is single-use: after rotation the old token is revoked."""
+    admin = make_admin_identity_dto(id=7, password=hash_password("secret"))
+    service = _service([admin])
+
+    _access, refresh = await service.issue_token_pair(admin)
+    await service.rotate_refresh_token(refresh)
+
+    with pytest.raises(AdminRefreshTokenRevokedException):
+        await service.rotate_refresh_token(refresh)
+
+
+@pytest.mark.asyncio
+async def test_revoke_all_blocks_subsequent_rotation():
+    admin = make_admin_identity_dto(id=7, password=hash_password("secret"))
+    service = _service([admin])
+
+    _access, refresh = await service.issue_token_pair(admin)
+    revoked = await service.revoke_all_tokens_for_admin(7)
+    assert revoked == 1
+
+    with pytest.raises(AdminRefreshTokenRevokedException):
+        await service.rotate_refresh_token(refresh)
 
 
 @pytest.mark.asyncio

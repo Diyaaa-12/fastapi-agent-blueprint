@@ -506,6 +506,11 @@ class Settings(BaseSettings):
                 "[admin_jwt_audience] ADMIN_JWT_AUDIENCE must differ from "
                 "JWT_AUDIENCE (separate admin token realm)"
             )
+        if self.admin_jwt_issuer == self.jwt_issuer:
+            errors.append(
+                "[admin_jwt_issuer] ADMIN_JWT_ISSUER must differ from "
+                "JWT_ISSUER (separate admin token realm)"
+            )
         if self.admin_bootstrap_enabled and not self.admin_bootstrap_password:
             errors.append(
                 "[admin_bootstrap_password] ADMIN_BOOTSTRAP_PASSWORD must be set "
