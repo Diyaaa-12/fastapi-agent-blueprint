@@ -116,6 +116,19 @@ class Settings(BaseSettings):
     )
 
     # ----------------------------------------------------------------
+    # Admin audit log retention (#206 Phase 2)
+    #
+    # ``audit_cleanup_task`` deletes ``admin_audit_log`` rows older than this
+    # many days. Range-validated so a bogus env can't silently wipe history.
+    # ----------------------------------------------------------------
+    audit_log_retention_days: int = Field(
+        default=90,
+        validation_alias="AUDIT_LOG_RETENTION_DAYS",
+        ge=1,
+        le=3650,
+    )
+
+    # ----------------------------------------------------------------
     # Authentication (JWT)
     #
     # Local and quickstart use an auto-generated secret for zero-config
@@ -367,6 +380,20 @@ class Settings(BaseSettings):
             "Enable unauthenticated /v1/usage read endpoints. Default False; "
             "NiceGUI admin remains the safe default read surface until the "
             "project has tenant-aware API authentication."
+        ),
+    )
+
+    # Runtime prompt-injection + PII guardrails (#197 Phase 3 / #209).
+    # Read once at agent-adapter construction (DI), not in the hot path.
+    # Kill-switch: set GUARDRAILS_ENABLED=false to disable runtime detection
+    # in dev/CI or instantly in prod if false-positive rates spike.
+    guardrails_enabled: bool = Field(
+        default=True,
+        validation_alias="GUARDRAILS_ENABLED",
+        description=(
+            "Enable runtime LLM guardrails (input prompt-injection detection + "
+            "output PII-fabrication blocking) on the RAG and classifier agents. "
+            "Default True; the structural Phase 1+2 escaping stays active regardless."
         ),
     )
 

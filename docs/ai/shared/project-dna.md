@@ -6,7 +6,7 @@
 > This file is auto-extracted/updated from `src/user/` (reference domain) and `src/_core/` (Base classes)
 > when `/sync-guidelines` is run. **Run `/sync-guidelines` instead of editing manually.**
 >
-> Last updated: 2026-05-14 (OTEL and Langfuse observability security sync)
+> Last updated: 2026-06-01 (#211 / #197 Phase 5 — guardrail observability ledger + red-team suite)
 
 ## Section Index
 §0 Project Scale and Design Philosophy |
@@ -765,6 +765,23 @@ The NiceGUI admin layer integrates with the admin-identity credential check (PR 
 
 Quickstart prints the seeded `admin / admin` credentials only when `ENV=quickstart`; production / staging deployments must override the bootstrap env vars or disable seeding.
 
+### Loading states (#198)
+
+- **Async write buttons**: wrap the slow `await` in `async with button_loading(btn)` (`layout.py`) — it sets Quasar `loading`+`disable` and always clears in `finally`. Keep navigation / `dlg.close()` / list-refresh *outside* the `async with` so the button is not toggled after it may be torn down.
+- **Page data loading**: `BaseAdminPage.render_list/render_detail` render a structure-mirroring skeleton, `await ui.context.client.connected()` before the fetch (so the skeleton is actually flushed to the client during a slow load), and delete the skeleton in `finally`. One change covers all domain pages; custom non-`BaseAdminPage` content areas (e.g. `docs_query_page`, `ai_usage_summary_page`) should provide appropriate inline feedback (e.g. `ui.spinner`) for their own slow fetches.
+
+### Admin audit logging (#196 Phase 1 + #206 Phase 2)
+
+- **Persistence**: `src/_core/infrastructure/admin/audit/` (`AdminAuditLog` model + `0007` migration). Append-only. Phase 1 shipped `insert`; Phase 2 (#206) added `list_filtered` (summary projection + total count), `get_by_id` (full row with JSON state), and `delete_older_than` (retention cleanup). The list query uses an explicit `_SUMMARY_COLUMNS` projection so `before_state` / `after_state` JSON never travels in the list payload — the detail dialog fetches it on-demand. Tz-aware datetimes passed by callers (UI filters, scheduler, REPL) are normalized to naive UTC inside the repository (`_to_naive_utc`) before binding against the tz-naive `created_at` column on Postgres/asyncpg.
+- **Facade**: `AuditLogger` (`audit/logger.py`) is the only entry callers use — `await get_audit_logger().log(action=..., domain=..., result=..., ...)`. Actor (`admin_user_id` / `admin_username`) and `correlation_id` auto-fill from the NiceGUI session and `asgi-correlation-id`; explicit kwargs override (used by the LOGIN failure path that has no session yet). **Audit-write never raises** — repository failures are swallowed via a structlog warning so a broken audit log cannot break the user action.
+- **`@audit_action` decorator (Phase 2)**: `audit/logger.py` exposes `audit_action(action, domain, before_fn=..., after_fn=...)` to wrap admin write callables. The decorator runs `before_fn` (optional snapshot hook), invokes the wrapped callable, logs `SUCCESS`/`FAILURE` (with `error_code` for handled exceptions), then re-raises the original exception so the page-level `@admin_error_boundary` still notifies the operator. `before_fn` / `after_fn` failures are swallowed via `_safe_capture` (state stays `None`) so capture-hook bugs cannot break the wrapped action.
+- **Model registration**: `src/_apps/server/bootstrap.py` and `migrations/env_utils.load_models()` both import `src._core.infrastructure.admin.audit.models` so the table is in `Base.metadata` for quickstart's `create_all()` and Alembic autogenerate. The package `__init__` deliberately **does not** re-export `audit.logger` (which imports `nicegui`) so the minimal-install boot path stays clean — admin-only callers import logger symbols from `audit.logger` directly.
+- **Schema layout**: `action` is the verb (`LOGIN`, `ACCOUNT_DELETE`, `VIEW_LIST`, `VIEW_DETAIL`, …), `result` is `SUCCESS`/`FAILURE` — orthogonal, no `LOGIN_SUCCESS` compound. `record_id` is a varchar (UUID/string-id ready). `admin_username` is denormalized so log entries survive account deletion (FK is `ON DELETE SET NULL`). Composite indexes pair the common filter columns with `created_at DESC`.
+- **Snapshot safety**: `before_state` / `after_state` are produced by the `safe_user_snapshot` whitelist serializer (`audit/safe_state.py`). Password hashes, refresh-token hashes, temporary passwords, raw exception messages, and any newly-added `UserDTO` field default to **not** being audited until explicitly allow-listed. `failure_reason` carries the domain `error_code` only — never `str(exc)`.
+- **Instrumentation sites (Phase 1)**: `AdminAuthProvider.authenticate` self-logs `LOGIN` SUCCESS/FAILURE; `layout._handle_logout` records `LOGOUT` before clearing the session (the static `AdminAuthProvider.logout()` is called from many cleanup paths and must not emit a user-logout event); the four account-management callbacks (`accounts.create_account` / `save_perms` / `confirm_remove`, `setup.create_first_admin`, `change_password.do_change`) log SUCCESS and handled-failure with `error_code` as `failure_reason`.
+- **Operator UI (Phase 2)**: `/admin/audit-log` (gated by the `audit_log` permission key, which is fixed in `AdminPermissionRegistry._FIXED_KEYS` alongside `accounts` and granted to the first real admin via the existing setup flow). Filter bar + AG Grid summary list + row-click detail dialog rendering `before_state` / `after_state` as plain text (`ui.code`) to prevent HTML injection. The page itself does **not** call `AuditLogger.log` (avoids self-loops). `BaseAdminPage.log_reads: bool = False` is the opt-in switch for per-domain `VIEW_LIST` / `VIEW_DETAIL` events; default off, on means the page's `render_list` / `render_detail` emit a single audit event per request.
+- **Retention (Phase 2)**: `audit_log_retention_days` setting (`Field(default=90, ge=1, le=3650)`) bounds the retention window so a bogus env can't silently delete everything. `src/_apps/worker/tasks/audit_cleanup_task.py` is a regular `@broker.task` with a `schedule=[{"cron": "0 3 * * *"}]` label so it is triggerable in three ways: (1) the dedicated TaskiqScheduler process (`make scheduler`, reads labels via `LabelScheduleSource`), (2) external cron / k8s `CronJob` enqueuing the task by name, or (3) a one-off REPL invocation. The same `@broker.task` decoration covers all three. `_naive_utc_now()` produces a tz-naive cutoff for the Postgres column. `src/_apps/worker/scheduler.py` is the scheduler entrypoint and imports `worker.app` so `bootstrap_app` runs (middlewares + domain wiring) on the scheduler process too; `bootstrap.py` calls `container.wire(modules=[_audit_cleanup])` at module level so Provide markers resolve in both the worker and scheduler processes (codex round-2 must-fix).
+
 ## §12. S3 Vector Store Pattern
 
 ### VectorModel (Data Model)
@@ -922,14 +939,30 @@ class ClassificationService:
 # 2. Infrastructure adapter: PydanticAI Agent lives here
 class PydanticAIClassifier:
     def __init__(self, llm_model: Any) -> None:
+        # `instructions=` (modern PydanticAI slot) is preferred over the legacy
+        # `system_prompt=` since #197 Phase 1+2 — instructions are separated from
+        # the user prompt parts and, on the OpenAI Responses provider, are sent as
+        # a dedicated top-level `instructions` field. This is NOT a secrecy
+        # boundary (PydanticAI still stores the rendered instructions on the
+        # ModelRequest); the value is separation-from-user-input, not concealment.
+        # The persona prose is typed as `Final[LiteralString]` so pyright blocks
+        # any future f-string interpolation of untrusted runtime data into the
+        # agent's behavioural contract.
         self._agent: Agent[None, ClassificationDTO] = Agent(
             model=llm_model,
             output_type=ClassificationDTO,
-            system_prompt="...",
+            instructions=_INSTRUCTIONS,
         )
 
     async def classify(self, text: str, categories: list[str] | None = None) -> ClassificationDTO:
-        result = await self._agent.run(text)
+        # All dynamic prompt fields (user text, category labels, retrieved chunk
+        # title/content, user question) go through ``escape_for_prompt_xml`` in
+        # ``src/_core/infrastructure/llm/prompt_boundaries.py`` and are wrapped
+        # in named XML boundary tags (`<user_text>`, `<category>`, `<documents>`
+        # / `<document>` / `<title>` / `<content>`). The `instructions=` text
+        # tells the model to treat the wrapped content as untrusted DATA and
+        # NEVER follow embedded directives — see #197 Phase 1+2.
+        result = await self._agent.run(_format_prompt(text, categories))
         return result.output
 
 # 3. DI container: Selector wires real vs stub
@@ -952,6 +985,15 @@ classification_service = providers.Factory(ClassificationService, classifier=cla
 - Structured output via `Agent[DepsType, OutputType]` — type-checked at build time
 - Domain service injects `ClassifierProtocol` (or equivalent), not `llm_model` directly
 - ADR 043: Domain → Protocol → Infra Adapter → Selector is the canonical AI feature pattern
+
+### Prompt-injection guardrails (#197)
+
+Two layers, both living at the **adapter** boundary (not the PydanticAI Hooks/capabilities API — the adapters own the call sites, so plain functions are simpler, fully testable, and version-decoupled):
+
+- **Structural (Phase 1+2, PR #208)**: `instructions=` over `system_prompt=`; every dynamic prompt field escaped via `escape_for_prompt_xml` and wrapped in named XML boundary tags; instruction constants typed `Final[LiteralString]`. See §14 code comments + `src/_core/infrastructure/llm/prompt_boundaries.py`.
+- **Runtime (Phase 3, #209)**: `src/_core/infrastructure/llm/guardrails.py` plain functions. `detect_prompt_injection` (input guard, scans every user-supplied field — RAG question; classifier `text` + each `categories` label — before `agent.run()`, raises `PromptInjectionDetected` 400). RAG output guard diffs `scan_pii(answer)` vs PII in `source_title`+`content` of the chunks and raises `GuardrailBlocked` 422 on fabrication; verbatim prompt-leak is log-only. `GUARDRAILS_ENABLED` (default True) is the DI-wired kill-switch. Guardrail exceptions carry no `details` (handler serializes `exc.details` to the response).
+- **Observability (Phase 5, #211)**: `ai_usage.guardrail_triggered: bool` column (migration `0008`, with a `(guardrail_triggered, occurred_at)` index for the "blocked in last 24h" query). `track_agent_usage` is wired **inside** both adapters (`PydanticAIAnswerAgent.answer`, `PydanticAIClassifier.classify`) — Infrastructure→Application is allowed; the adapters take an `AgentUsageRecorderProtocol` and the concrete `ai_usage` import lives only in DI (`DocsContainer` / `ClassificationContainer`). The flag is set by a duck-typed `is_guardrail_block` class marker on the guardrail exceptions so `usage_tracker` never imports them (keeps the usage-tracker architecture test green). An input block records a zero-token row; an output block records consumed tokens (`capture.set_result` runs before the output guard). A guardrail block surfaces as `status='error'` + `guardrail_triggered=True` + `error_code` in `{PROMPT_INJECTION_DETECTED, GUARDRAIL_BLOCKED}`. Telemetry is standardized via `guardrail_telemetry.log_guardrail_event` (`agent`/`action`/`stage`/`rule` [+`count`/`types`]); `request_id`/`user_id` are bound to structlog contextvars at the request boundary (scoped unbind). Server-side `/v1/usage?guardrailTriggered=` filter + an `ai_usage` admin list column. Red-team corpus at `tests/integration/_core/infrastructure/llm/test_adversarial_prompts.py`.
+- **Out of scope until a later phase**: `Document.trust_level`, base64/ROT13 decode (encoded-injection is a documented non-goal — the red-team suite asserts the structural boundary still holds), classifier output guard, per-user rate/budget caps (Phase 4 #210).
 
 ## §15. Auth Domain Pattern
 
