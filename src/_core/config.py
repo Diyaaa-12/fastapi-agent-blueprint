@@ -96,10 +96,11 @@ class Settings(BaseSettings):
         default=None,
         validation_alias="ADMIN_DARK_MODE_DEFAULT",
     )
-    # Admin shell color palette preset (#193). "default" = classic blue,
-    # "slate" = modern slate + indigo. Drives the --q-*/--admin-* CSS variables;
-    # the look can be rebranded by adding a preset in admin/theme.py.
-    admin_theme_palette: Literal["default", "slate"] = Field(
+    # Admin shell style preset (#193). Bundles color + shape/elevation tokens:
+    # "default" (classic blue), "linear" (minimal flat), "shadcn" (clean rounded),
+    # "supabase" (dark header + green). Drives the --q-*/--admin-* CSS variables;
+    # add a preset in admin/theme.py to rebrand.
+    admin_theme_palette: Literal["default", "linear", "shadcn", "supabase"] = Field(
         default="default",
         validation_alias="ADMIN_THEME_PALETTE",
     )

@@ -72,9 +72,7 @@ def admin_layout(
             _render_dark_mode_toggle()
             username = session.username if session else _app_username()
             if username:
-                with ui.button(username, icon="account_circle").props(
-                    "flat color=white"
-                ):
+                with ui.button(username, icon="account_circle").props("flat"):
                     with ui.menu():
                         ui.menu_item(
                             "Change Password",
@@ -83,7 +81,7 @@ def admin_layout(
             ui.button(
                 icon="logout",
                 on_click=_handle_logout,
-            ).props("flat color=white")
+            ).props("flat")
 
     with ui.left_drawer(top_corner=True, bottom_corner=True).classes(
         AdminClasses.DRAWER
@@ -159,7 +157,7 @@ def _render_dark_mode_toggle() -> None:
         dark.value = _next_dark_value(dark.value)
         app.storage.user[_DARK_MODE_KEY] = dark.value
 
-    ui.button(icon="dark_mode", on_click=_toggle).props("flat color=white").tooltip(
+    ui.button(icon="dark_mode", on_click=_toggle).props("flat").tooltip(
         "Toggle light / dark"
     )
 

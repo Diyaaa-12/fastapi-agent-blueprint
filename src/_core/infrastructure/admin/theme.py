@@ -1,27 +1,31 @@
-"""Centralized theme for the NiceGUI admin dashboard (#193).
+"""Centralized theme + style system for the NiceGUI admin dashboard (#193).
 
-Single source of truth for admin colors, layout metrics, and the helper CSS
-classes that every admin page consumes. Replaces the hardcoded Quasar/Tailwind
-color classes (``bg-blue-800``, ``text-blue-800``, ``bg-blue-50`` …) and inline
-grid heights that were previously scattered across the shell and domain pages.
+Single source of truth for admin colors, **style tokens** (radius, shadow,
+border treatment), layout metrics, and the helper CSS classes + Quasar
+component overrides that every admin page inherits. Replaces the hardcoded
+Quasar/Tailwind color classes and inline grid heights that were previously
+scattered across the shell and domain pages.
 
 Design (see plan #193 / Codex cross-review):
 
-* **Quasar brand** is overridden via the ``--q-*`` CSS variables, and our own
-  **semantic tokens** via ``--admin-*`` variables. Both are declared under
-  ``:root`` (light) and ``.body--dark`` (dark), so the whole palette flips with
-  Quasar's ``body--dark`` class — no Python re-render, no reload, and no
-  per-page ``ui.colors()`` call (which is page-scoped in NiceGUI 3.x).
-* The CSS is injected **once, app-wide** via ``ui.add_css(..., shared=True)``
-  so it reaches *every* page — including login / setup / error, which never
-  call :func:`admin_layout`.
+* The look is driven by CSS custom properties: ``--q-*`` (Quasar brand) and
+  ``--admin-*`` (semantic + style) variables, declared under ``:root`` (light)
+  and ``.body--dark`` (dark). Quasar's ``body--dark`` toggle flips the whole
+  palette with no Python re-render, no reload, and no per-page ``ui.colors()``.
+* Multiple **style presets** (``default``, ``linear``, ``shadcn``,
+  ``supabase``) bundle a full set of color + style tokens, selected at boot via
+  the ``ADMIN_THEME_PALETTE`` setting. The layout structure is identical across
+  presets — only the tokens (and thus the CSS-var-driven component look) differ.
+* The CSS is injected **once, app-wide** via ``ui.add_css(..., shared=True)`` so
+  it reaches every page — including login / setup / error, which never call
+  :func:`admin_layout`.
 * AG Grid dark theming is **built in** to NiceGUI (a ``body--dark`` observer
-  flips ``data-ag-theme-mode`` + ``colorSchemeVariable``), so this module does
-  not ship AG Grid dark overrides — only neutral layout helpers.
+  flips ``data-ag-theme-mode``); we only feed it ``--ag-*`` vars for row colors.
 
 Constants here are intentionally **import-free** (no ``from nicegui``); the
-nicegui import is lazy inside :func:`install_admin_theme_css` so the constants
-and :func:`build_admin_css` remain testable when the ``admin`` extra is absent.
+nicegui + settings imports are lazy inside :func:`install_admin_theme_css` so
+the constants and :func:`build_admin_css` stay testable when the ``admin``
+extra is absent.
 """
 
 from __future__ import annotations
@@ -33,17 +37,13 @@ EMPTY_DISPLAY: Final = "—"
 
 
 class AdminColors:
-    """Brand palette — the single source of truth for admin colors.
+    """Default brand palette — also the source of the ``default`` preset."""
 
-    Light/dark concrete values live in the CSS blocks below; these names are
-    the canonical references used when wiring Quasar brand variables.
-    """
-
-    PRIMARY: Final = "#1d4ed8"  # was bg-blue-800 / text-blue-800
+    PRIMARY: Final = "#1d4ed8"
     SECONDARY: Final = "#475569"
     ACCENT: Final = "#0ea5e9"
-    POSITIVE: Final = "#16a34a"  # success surfaces (was bg-green-1)
-    NEGATIVE: Final = "#dc2626"  # errors (was text-red-700)
+    POSITIVE: Final = "#16a34a"
+    NEGATIVE: Final = "#dc2626"
     WARNING: Final = "#d97706"
     INFO: Final = "#0284c7"
 
@@ -60,17 +60,25 @@ class AdminVars:
     Q_WARNING: Final = "--q-warning"
     Q_INFO: Final = "--q-info"
 
-    # Semantic admin tokens (our own surfaces).
+    # Semantic surfaces.
+    BG: Final = "--admin-bg"
+    SURFACE: Final = "--admin-surface"
+    BORDER: Final = "--admin-border"
+    TEXT_MUTED: Final = "--admin-text-muted"
     HEADER_BG: Final = "--admin-header-bg"
     HEADER_TEXT: Final = "--admin-header-text"
     DRAWER_BG: Final = "--admin-drawer-bg"
     NAV_ACTIVE: Final = "--admin-nav-active"
-    SURFACE: Final = "--admin-surface"
-    BORDER: Final = "--admin-border"
-    TEXT_MUTED: Final = "--admin-text-muted"
     SUCCESS_BG: Final = "--admin-success-bg"
     ROW_ALT: Final = "--admin-row-alt"
     ROW_HOVER: Final = "--admin-row-hover"
+
+    # Style tokens (shape/elevation — theme-level, same in light + dark).
+    RADIUS: Final = "--admin-radius"
+    SHADOW: Final = "--admin-shadow"
+    CARD_BORDER: Final = "--admin-card-border"
+
+    # Layout metrics.
     GRID_HEIGHT: Final = "--admin-grid-height"
     GRID_HEIGHT_COMPACT: Final = "--admin-grid-height-compact"
     LABEL_COL_WIDTH: Final = "--admin-label-col-width"
@@ -84,10 +92,7 @@ class AdminMetrics:
 
 
 class AdminClasses:
-    """Helper CSS class names (all ``admin-`` prefixed for the AST guard).
-
-    Pages reference these instead of hardcoded ``bg-*`` / ``text-*`` colors.
-    """
+    """Helper CSS class names (all ``admin-`` prefixed for the AST guard)."""
 
     HEADER: Final = "admin-header"
     DRAWER: Final = "admin-drawer"
@@ -96,7 +101,6 @@ class AdminClasses:
     CARD: Final = "admin-card"
     FIELD_LABEL: Final = "admin-field-label"
     FIELD_VALUE: Final = "admin-field-value"
-    # Muted/caption text — flips with dark mode (unlike fixed Quasar greys).
     MUTED: Final = "admin-text-muted"
     EMPTY_VALUE: Final = "admin-empty-value"
     SUCCESS_SURFACE: Final = "admin-success-surface"
@@ -108,13 +112,11 @@ class AdminClasses:
     HIDDEN: Final = "admin-hidden"
 
 
-# ── Palette presets (#193) ──
+# ── Style presets (#193) ──
 #
-# Each palette supplies the light (:root) and dark (.body--dark) values for the
-# Quasar brand + semantic tokens. Layout tokens (grid height, label width) are
-# palette-independent and emitted separately. Selected at boot via the
-# ``ADMIN_THEME_PALETTE`` setting so the look can be compared/rebranded without
-# touching code.
+# Each preset bundles "style" (shape/elevation, theme-level), "light" (:root
+# colors) and "dark" (.body--dark colors). Layout metrics are shared. Selected
+# at boot via ADMIN_THEME_PALETTE; unknown names fall back to DEFAULT_PALETTE.
 DEFAULT_PALETTE: Final = "default"
 
 _LAYOUT_TOKENS: Final = {
@@ -124,8 +126,13 @@ _LAYOUT_TOKENS: Final = {
 }
 
 _PALETTES: Final = {
-    # Classic blue — the original look, brand from AdminColors.
+    # Classic blue — the original corporate look.
     "default": {
+        "style": {
+            AdminVars.RADIUS: "4px",
+            AdminVars.SHADOW: "0 1px 4px rgba(0,0,0,0.12)",
+            AdminVars.CARD_BORDER: "none",
+        },
         "light": {
             AdminVars.Q_PRIMARY: AdminColors.PRIMARY,
             AdminVars.Q_SECONDARY: AdminColors.SECONDARY,
@@ -134,67 +141,248 @@ _PALETTES: Final = {
             AdminVars.Q_NEGATIVE: AdminColors.NEGATIVE,
             AdminVars.Q_WARNING: AdminColors.WARNING,
             AdminVars.Q_INFO: AdminColors.INFO,
+            AdminVars.BG: "#f1f5f9",
+            AdminVars.SURFACE: "#ffffff",
+            AdminVars.BORDER: "#e2e8f0",
+            AdminVars.TEXT_MUTED: "#64748b",
             AdminVars.HEADER_BG: AdminColors.PRIMARY,
             AdminVars.HEADER_TEXT: "#ffffff",
             AdminVars.DRAWER_BG: "#eff6ff",
             AdminVars.NAV_ACTIVE: "#1e40af",
-            AdminVars.SURFACE: "#ffffff",
-            AdminVars.BORDER: "#e2e8f0",
-            AdminVars.TEXT_MUTED: "#64748b",
             AdminVars.SUCCESS_BG: "#f0fdf4",
             AdminVars.ROW_ALT: "#f8fafc",
             AdminVars.ROW_HOVER: "#eef2ff",
         },
         "dark": {
+            AdminVars.BG: "#0b1220",
+            AdminVars.SURFACE: "#1e293b",
+            AdminVars.BORDER: "#334155",
+            AdminVars.TEXT_MUTED: "#94a3b8",
             AdminVars.HEADER_BG: "#1e293b",
             AdminVars.HEADER_TEXT: "#f1f5f9",
             AdminVars.DRAWER_BG: "#0f172a",
             AdminVars.NAV_ACTIVE: "#60a5fa",
-            AdminVars.SURFACE: "#1e293b",
-            AdminVars.BORDER: "#334155",
-            AdminVars.TEXT_MUTED: "#94a3b8",
             AdminVars.SUCCESS_BG: "#052e16",
             AdminVars.ROW_ALT: "#0f172a",
             AdminVars.ROW_HOVER: "#1e293b",
         },
     },
-    # Modern slate + indigo — neutral slate surfaces, indigo accent, dark header.
-    "slate": {
+    # Linear / Vercel — minimal, flat, border-based, indigo accent, light header.
+    "linear": {
+        "style": {
+            AdminVars.RADIUS: "6px",
+            AdminVars.SHADOW: "none",
+            AdminVars.CARD_BORDER: "1px solid var(--admin-border)",
+        },
         "light": {
-            AdminVars.Q_PRIMARY: "#4f46e5",
-            AdminVars.Q_SECONDARY: "#64748b",
-            AdminVars.Q_ACCENT: "#6366f1",
-            AdminVars.Q_POSITIVE: "#16a34a",
-            AdminVars.Q_NEGATIVE: "#e11d48",
-            AdminVars.Q_WARNING: "#d97706",
-            AdminVars.Q_INFO: "#0ea5e9",
-            AdminVars.HEADER_BG: "#1e293b",
-            AdminVars.HEADER_TEXT: "#f8fafc",
-            AdminVars.DRAWER_BG: "#f8fafc",
-            AdminVars.NAV_ACTIVE: "#4f46e5",
+            AdminVars.Q_PRIMARY: "#5e6ad2",
+            AdminVars.Q_SECONDARY: "#6b6f76",
+            AdminVars.Q_ACCENT: "#5e6ad2",
+            AdminVars.Q_POSITIVE: "#4cb782",
+            AdminVars.Q_NEGATIVE: "#eb5757",
+            AdminVars.Q_WARNING: "#d99e00",
+            AdminVars.Q_INFO: "#4ea7fc",
+            AdminVars.BG: "#fbfbfb",
             AdminVars.SURFACE: "#ffffff",
-            AdminVars.BORDER: "#e2e8f0",
-            AdminVars.TEXT_MUTED: "#64748b",
-            AdminVars.SUCCESS_BG: "#f0fdf4",
-            AdminVars.ROW_ALT: "#f1f5f9",
-            AdminVars.ROW_HOVER: "#eef2ff",
+            AdminVars.BORDER: "#ebebed",
+            AdminVars.TEXT_MUTED: "#8a8f98",
+            AdminVars.HEADER_BG: "#ffffff",
+            AdminVars.HEADER_TEXT: "#232529",
+            AdminVars.DRAWER_BG: "#fbfbfb",
+            AdminVars.NAV_ACTIVE: "#5e6ad2",
+            AdminVars.SUCCESS_BG: "#edf7f2",
+            AdminVars.ROW_ALT: "#fafafa",
+            AdminVars.ROW_HOVER: "#f4f4f5",
         },
         "dark": {
-            AdminVars.HEADER_BG: "#020617",
-            AdminVars.HEADER_TEXT: "#e2e8f0",
-            AdminVars.DRAWER_BG: "#0f172a",
-            AdminVars.NAV_ACTIVE: "#818cf8",
-            AdminVars.SURFACE: "#1e293b",
-            AdminVars.BORDER: "#334155",
-            AdminVars.TEXT_MUTED: "#94a3b8",
+            AdminVars.BG: "#0d0d0f",
+            AdminVars.SURFACE: "#161618",
+            AdminVars.BORDER: "#232326",
+            AdminVars.TEXT_MUTED: "#8a8f98",
+            AdminVars.HEADER_BG: "#0d0d0f",
+            AdminVars.HEADER_TEXT: "#e6e6e8",
+            AdminVars.DRAWER_BG: "#0d0d0f",
+            AdminVars.NAV_ACTIVE: "#8b87ff",
+            AdminVars.SUCCESS_BG: "#0f2a1f",
+            AdminVars.ROW_ALT: "#161618",
+            AdminVars.ROW_HOVER: "#1c1c1f",
+        },
+    },
+    # shadcn / Notion — clean light, rounded, soft shadow, near-black primary.
+    "shadcn": {
+        "style": {
+            AdminVars.RADIUS: "12px",
+            AdminVars.SHADOW: "0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1)",
+            AdminVars.CARD_BORDER: "1px solid var(--admin-border)",
+        },
+        "light": {
+            AdminVars.Q_PRIMARY: "#18181b",
+            AdminVars.Q_SECONDARY: "#71717a",
+            AdminVars.Q_ACCENT: "#6366f1",
+            AdminVars.Q_POSITIVE: "#16a34a",
+            AdminVars.Q_NEGATIVE: "#ef4444",
+            AdminVars.Q_WARNING: "#f59e0b",
+            AdminVars.Q_INFO: "#3b82f6",
+            AdminVars.BG: "#fafafa",
+            AdminVars.SURFACE: "#ffffff",
+            AdminVars.BORDER: "#e4e4e7",
+            AdminVars.TEXT_MUTED: "#71717a",
+            AdminVars.HEADER_BG: "#ffffff",
+            AdminVars.HEADER_TEXT: "#18181b",
+            AdminVars.DRAWER_BG: "#fafafa",
+            AdminVars.NAV_ACTIVE: "#18181b",
+            AdminVars.SUCCESS_BG: "#f0fdf4",
+            AdminVars.ROW_ALT: "#fafafa",
+            AdminVars.ROW_HOVER: "#f4f4f5",
+        },
+        "dark": {
+            AdminVars.BG: "#09090b",
+            AdminVars.SURFACE: "#18181b",
+            AdminVars.BORDER: "#27272a",
+            AdminVars.TEXT_MUTED: "#a1a1aa",
+            AdminVars.HEADER_BG: "#09090b",
+            AdminVars.HEADER_TEXT: "#fafafa",
+            AdminVars.DRAWER_BG: "#09090b",
+            AdminVars.NAV_ACTIVE: "#fafafa",
             AdminVars.SUCCESS_BG: "#052e16",
-            AdminVars.ROW_ALT: "#0f172a",
-            AdminVars.ROW_HOVER: "#1e293b",
+            AdminVars.ROW_ALT: "#18181b",
+            AdminVars.ROW_HOVER: "#27272a",
+        },
+    },
+    # Supabase / Stripe — dark header, green accent, clean data tables.
+    "supabase": {
+        "style": {
+            AdminVars.RADIUS: "8px",
+            AdminVars.SHADOW: "0 1px 2px rgba(0,0,0,0.08)",
+            AdminVars.CARD_BORDER: "1px solid var(--admin-border)",
+        },
+        "light": {
+            AdminVars.Q_PRIMARY: "#3ecf8e",
+            AdminVars.Q_SECONDARY: "#64748b",
+            AdminVars.Q_ACCENT: "#3ecf8e",
+            AdminVars.Q_POSITIVE: "#3ecf8e",
+            AdminVars.Q_NEGATIVE: "#ef4444",
+            AdminVars.Q_WARNING: "#f59e0b",
+            AdminVars.Q_INFO: "#3b82f6",
+            AdminVars.BG: "#f8f9fa",
+            AdminVars.SURFACE: "#ffffff",
+            AdminVars.BORDER: "#e6e8eb",
+            AdminVars.TEXT_MUTED: "#6b7280",
+            AdminVars.HEADER_BG: "#1c1c1c",
+            AdminVars.HEADER_TEXT: "#ededed",
+            AdminVars.DRAWER_BG: "#fbfcfd",
+            AdminVars.NAV_ACTIVE: "#3ecf8e",
+            AdminVars.SUCCESS_BG: "#ecfdf5",
+            AdminVars.ROW_ALT: "#f8f9fa",
+            AdminVars.ROW_HOVER: "#f0fdf8",
+        },
+        "dark": {
+            AdminVars.BG: "#121212",
+            AdminVars.SURFACE: "#1c1c1c",
+            AdminVars.BORDER: "#2e2e2e",
+            AdminVars.TEXT_MUTED: "#a0a0a0",
+            AdminVars.HEADER_BG: "#121212",
+            AdminVars.HEADER_TEXT: "#ededed",
+            AdminVars.DRAWER_BG: "#1c1c1c",
+            AdminVars.NAV_ACTIVE: "#3ecf8e",
+            AdminVars.SUCCESS_BG: "#06281d",
+            AdminVars.ROW_ALT: "#1c1c1c",
+            AdminVars.ROW_HOVER: "#262626",
         },
     },
 }
 
 PALETTES: Final = tuple(_PALETTES)
+
+
+# Palette-independent rules: helper classes + Quasar component overrides that
+# read the tokens above. Plain string (literal class/var names) so there are no
+# f-string brace-escaping hazards.
+_HELPER_CSS: Final = """
+/* === Helper classes + Quasar component overrides (token-driven) === */
+body, .q-page-container {
+  background-color: var(--admin-bg) !important;
+}
+.admin-header {
+  background-color: var(--admin-header-bg) !important;
+  color: var(--admin-header-text) !important;
+  box-shadow: none !important;
+  border-bottom: 1px solid var(--admin-border);
+}
+.admin-header .q-btn,
+.admin-header .q-icon,
+.admin-header .q-toolbar__title {
+  color: var(--admin-header-text) !important;
+}
+.admin-drawer {
+  background-color: var(--admin-drawer-bg) !important;
+  border-right: 1px solid var(--admin-border);
+}
+.admin-nav-active {
+  color: var(--admin-nav-active) !important;
+  font-weight: 700;
+}
+.admin-accent-icon {
+  color: var(--admin-nav-active) !important;
+}
+.admin-field-label {
+  width: var(--admin-label-col-width);
+  font-weight: 700;
+}
+.admin-text-muted,
+.admin-empty-value {
+  color: var(--admin-text-muted);
+}
+.admin-success-surface {
+  background-color: var(--admin-success-bg) !important;
+}
+.admin-grid {
+  width: 100%;
+  height: var(--admin-grid-height);
+}
+.admin-grid-compact {
+  width: 100%;
+  height: var(--admin-grid-height-compact);
+}
+/* AG Grid (NiceGUI 3.x quartz theme) reads these CSS custom properties from the
+   new theming API — set them on the grid element rather than overriding the
+   legacy .ag-row-odd class (which the quartz theme no longer emits). */
+.admin-grid,
+.admin-grid-compact {
+  --ag-odd-row-background-color: var(--admin-row-alt);
+  --ag-row-hover-color: var(--admin-row-hover);
+  --ag-border-radius: var(--admin-radius);
+}
+.admin-pagination {
+  justify-content: flex-end;
+}
+.admin-empty-state {
+  color: var(--admin-text-muted);
+  align-items: center;
+  text-align: center;
+  padding: 48px 0;
+}
+.admin-pre {
+  white-space: pre-wrap;
+}
+.admin-hidden {
+  display: none;
+}
+/* Shape/elevation applied to standard Quasar components so every page inherits
+   the preset look without per-page styling. */
+.q-card {
+  border-radius: var(--admin-radius) !important;
+  box-shadow: var(--admin-shadow) !important;
+  border: var(--admin-card-border) !important;
+}
+.q-btn {
+  border-radius: var(--admin-radius);
+}
+.q-field--outlined .q-field__control,
+.q-field__control {
+  border-radius: var(--admin-radius);
+}
+"""
 
 
 def _emit_vars(mapping: dict[str, str]) -> str:
@@ -206,81 +394,17 @@ def build_admin_css(palette: str = DEFAULT_PALETTE) -> str:
 
     Pure string builder (no nicegui import) so it is unit-testable without the
     ``admin`` extra. Emits ``:root`` (light) + ``.body--dark`` (dark) blocks for
-    the selected palette, then the palette-independent helper classes.
+    the selected preset, then the palette-independent helper/component CSS.
     Unknown palette names fall back to :data:`DEFAULT_PALETTE`.
     """
     name = palette if palette in _PALETTES else DEFAULT_PALETTE
     preset = _PALETTES[name]
-    root_vars = {**preset["light"], **_LAYOUT_TOKENS}
-    return f"""
-/* === Admin theme (#193) — palette: {name} (light) === */
-:root {{
-{_emit_vars(root_vars)}
-}}
-
-/* === Admin theme (#193) — dark overrides (Quasar body--dark) === */
-.body--dark {{
-{_emit_vars(preset["dark"])}
-}}
-
-/* === Helper classes consuming the tokens (palette-independent) === */
-.{AdminClasses.HEADER} {{
-  background-color: var({AdminVars.HEADER_BG}) !important;
-  color: var({AdminVars.HEADER_TEXT}) !important;
-}}
-.{AdminClasses.DRAWER} {{
-  background-color: var({AdminVars.DRAWER_BG}) !important;
-}}
-.{AdminClasses.NAV_ACTIVE} {{
-  color: var({AdminVars.NAV_ACTIVE}) !important;
-  font-weight: 700;
-}}
-.{AdminClasses.ACCENT_ICON} {{
-  color: var({AdminVars.NAV_ACTIVE}) !important;
-}}
-.{AdminClasses.FIELD_LABEL} {{
-  width: var({AdminVars.LABEL_COL_WIDTH});
-  font-weight: 700;
-}}
-.{AdminClasses.MUTED},
-.{AdminClasses.EMPTY_VALUE} {{
-  color: var({AdminVars.TEXT_MUTED});
-}}
-.{AdminClasses.SUCCESS_SURFACE} {{
-  background-color: var({AdminVars.SUCCESS_BG}) !important;
-}}
-.{AdminClasses.GRID} {{
-  width: 100%;
-  height: var({AdminVars.GRID_HEIGHT});
-}}
-.{AdminClasses.GRID_COMPACT} {{
-  width: 100%;
-  height: var({AdminVars.GRID_HEIGHT_COMPACT});
-}}
-/* AG Grid (NiceGUI 3.x quartz theme) reads these CSS custom properties from
-   the new theming API — set them on the grid element rather than overriding
-   the legacy .ag-row-odd class (which the quartz theme no longer emits). */
-.{AdminClasses.GRID},
-.{AdminClasses.GRID_COMPACT} {{
-  --ag-odd-row-background-color: var({AdminVars.ROW_ALT});
-  --ag-row-hover-color: var({AdminVars.ROW_HOVER});
-}}
-.{AdminClasses.PAGINATION} {{
-  justify-content: flex-end;
-}}
-.{AdminClasses.EMPTY_STATE} {{
-  color: var({AdminVars.TEXT_MUTED});
-  align-items: center;
-  text-align: center;
-  padding: 48px 0;
-}}
-.{AdminClasses.PRE} {{
-  white-space: pre-wrap;
-}}
-.{AdminClasses.HIDDEN} {{
-  display: none;
-}}
-"""
+    root_vars = {**preset["style"], **preset["light"], **_LAYOUT_TOKENS}
+    return (
+        f"/* === Admin theme (#193) — palette: {name} === */\n"
+        ":root {\n" + _emit_vars(root_vars) + "\n}\n"
+        ".body--dark {\n" + _emit_vars(preset["dark"]) + "\n}\n" + _HELPER_CSS
+    )
 
 
 _theme_css_installed = False

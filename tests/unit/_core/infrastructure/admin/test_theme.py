@@ -126,10 +126,30 @@ def test_each_palette_builds_valid_css_with_both_blocks():
             assert css.count(var) >= 2, f"{var} not in both blocks for {palette}"
 
 
-def test_palettes_are_visually_distinct():
-    """The two presets must differ (so previewing them is meaningful)."""
-    assert build_admin_css("default") != build_admin_css("slate")
+def test_all_presets_present():
+    assert set(PALETTES) == {"default", "linear", "shadcn", "supabase"}
+
+
+def test_presets_are_visually_distinct():
+    """Every preset must render distinct CSS (so previewing them is meaningful)."""
+    rendered = {p: build_admin_css(p) for p in PALETTES}
+    assert len(set(rendered.values())) == len(PALETTES)
 
 
 def test_unknown_palette_falls_back_to_default():
     assert build_admin_css("does-not-exist") == build_admin_css(DEFAULT_PALETTE)
+
+
+def test_css_defines_style_tokens_and_component_overrides():
+    """Style presets drive shape/elevation tokens + Quasar component overrides."""
+    css = build_admin_css()
+    for var in (
+        AdminVars.RADIUS,
+        AdminVars.SHADOW,
+        AdminVars.CARD_BORDER,
+        AdminVars.BG,
+    ):
+        assert var in css, f"{var} missing from CSS"
+    # Quasar components are restyled globally so every page inherits the look.
+    assert ".q-card" in css
+    assert ".admin-header .q-btn" in css  # header text is token-driven, not white
