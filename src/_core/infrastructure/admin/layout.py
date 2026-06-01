@@ -64,10 +64,10 @@ def admin_layout(
         f"items-center justify-between {AdminClasses.HEADER}"
     ):
         # Brand: an icon stands in for a project logo (swap for ui.image in a
-        # fork) + the dashboard name.
-        with ui.row().classes("items-center q-gutter-sm"):
-            ui.icon("space_dashboard").classes("text-h5")
-            ui.label("Admin Dashboard").classes("text-h6")
+        # fork) + the configurable brand name.
+        with ui.row().classes(f"items-center q-gutter-sm {AdminClasses.BRAND}"):
+            ui.icon("smart_toy").classes("text-h5")
+            ui.label(settings.admin_brand_name).classes("text-h6")
         with ui.row().classes("items-center q-gutter-xs"):
             _render_dark_mode_toggle()
             username = session.username if session else _app_username()
@@ -86,56 +86,60 @@ def admin_layout(
     with ui.left_drawer(top_corner=True, bottom_corner=True).classes(
         AdminClasses.DRAWER
     ):
-        ui.label("Navigation").classes("text-subtitle1 q-mb-md q-ml-sm")
+        _nav_item(
+            label="Dashboard",
+            icon="dashboard",
+            target="/admin/",
+            active=current_domain == "",
+        )
 
-        with ui.item(on_click=lambda: ui.navigate.to("/admin/")):
-            with ui.item_section().props("avatar"):
-                ui.icon("dashboard")
-            with ui.item_section():
-                ui.label("Dashboard")
+        if visible_configs:
+            _nav_section("Operations")
+            for page_config in visible_configs:
+                _nav_item(
+                    label=page_config.display_name,
+                    icon=page_config.icon,
+                    target=f"/admin/{page_config.domain_name}",
+                    active=page_config.domain_name == current_domain,
+                )
 
-        ui.separator()
+        show_accounts = permissions is None or "accounts" in permissions
+        show_audit = permissions is None or "audit_log" in permissions
+        if show_accounts or show_audit:
+            _nav_section("Management")
+            if show_accounts:
+                _nav_item(
+                    label="Accounts",
+                    icon="manage_accounts",
+                    target="/admin/accounts",
+                    active=current_domain == "accounts",
+                )
+            if show_audit:
+                _nav_item(
+                    label="Audit Log",
+                    icon="fact_check",
+                    target="/admin/audit-log",
+                    active=current_domain == "audit_log",
+                )
 
-        for page_config in visible_configs:
-            _is_active = page_config.domain_name == current_domain
-            with ui.item(
-                on_click=lambda p=page_config: ui.navigate.to(
-                    f"/admin/{p.domain_name}"
-                ),
-            ):
-                with ui.item_section().props("avatar"):
-                    ui.icon(page_config.icon).classes(
-                        AdminClasses.ACCENT_ICON if _is_active else ""
-                    )
-                with ui.item_section():
-                    _label = ui.label(page_config.display_name)
-                    if _is_active:
-                        _label.classes(AdminClasses.NAV_ACTIVE)
 
-        if permissions is None or "accounts" in permissions:
-            _is_accounts = current_domain == "accounts"
-            ui.separator()
-            with ui.item(on_click=lambda: ui.navigate.to("/admin/accounts")):
-                with ui.item_section().props("avatar"):
-                    ui.icon("manage_accounts").classes(
-                        AdminClasses.ACCENT_ICON if _is_accounts else ""
-                    )
-                with ui.item_section():
-                    _acc_label = ui.label("Accounts")
-                    if _is_accounts:
-                        _acc_label.classes(AdminClasses.NAV_ACTIVE)
+def _nav_section(title: str) -> None:
+    """Render a muted, uppercase section header in the sidebar."""
+    ui.label(title).classes(f"{AdminClasses.NAV_SECTION} q-mt-md q-mb-xs q-ml-md")
 
-        if permissions is None or "audit_log" in permissions:
-            _is_audit = current_domain == "audit_log"
-            with ui.item(on_click=lambda: ui.navigate.to("/admin/audit-log")):
-                with ui.item_section().props("avatar"):
-                    ui.icon("fact_check").classes(
-                        AdminClasses.ACCENT_ICON if _is_audit else ""
-                    )
-                with ui.item_section():
-                    _audit_label = ui.label("Audit Log")
-                    if _is_audit:
-                        _audit_label.classes(AdminClasses.NAV_ACTIVE)
+
+def _nav_item(*, label: str, icon: str, target: str, active: bool) -> None:
+    """Render one sidebar nav item, highlighted when it is the active route."""
+    item = ui.item(on_click=lambda: ui.navigate.to(target))
+    if active:
+        item.classes(AdminClasses.NAV_ACTIVE_ITEM)
+    with item:
+        with ui.item_section().props("avatar"):
+            ui.icon(icon).classes(AdminClasses.ACCENT_ICON if active else "")
+        with ui.item_section():
+            text = ui.label(label)
+            if active:
+                text.classes(AdminClasses.NAV_ACTIVE)
 
 
 def _render_dark_mode_toggle() -> None:

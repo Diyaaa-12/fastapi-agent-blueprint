@@ -104,6 +104,13 @@ class Settings(BaseSettings):
         default="default",
         validation_alias="ADMIN_THEME_PALETTE",
     )
+    # Brand name shown in the admin header + login card (#193). Rebrand per fork.
+    admin_brand_name: str = Field(
+        default="Admin Console",
+        validation_alias="ADMIN_BRAND_NAME",
+        min_length=1,
+        max_length=40,
+    )
     admin_bootstrap_enabled: bool = Field(
         default=False,
         validation_alias="ADMIN_BOOTSTRAP_ENABLED",

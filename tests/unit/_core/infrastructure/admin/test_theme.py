@@ -58,26 +58,26 @@ def test_css_defines_light_and_dark_blocks():
 
 
 def test_css_defines_every_token_in_both_themes():
-    """Each Quasar brand + semantic var must be set, and every dark-flippable
-    token must also appear in the .body--dark block."""
+    """Chrome + brand live in :root (constant); content surfaces flip in dark."""
     css = build_admin_css()
     root_block = css.split(".body--dark")[0]
     dark_block = css[css.index(".body--dark") :]
 
-    # Quasar brand vars live in :root (brand is theme-independent here).
+    # Brand + dark-chrome tokens are :root-only (constant across light/dark).
     for var in (
         AdminVars.Q_PRIMARY,
         AdminVars.Q_NEGATIVE,
-        AdminVars.Q_POSITIVE,
-    ):
-        assert var in root_block
-
-    # Semantic surfaces must be defined in BOTH light and dark so they flip.
-    for var in (
         AdminVars.HEADER_BG,
         AdminVars.DRAWER_BG,
+        AdminVars.DRAWER_TEXT,
         AdminVars.NAV_ACTIVE,
+    ):
+        assert var in root_block, f"{var} missing from :root"
+
+    # Content surfaces must be defined in BOTH light and dark so they flip.
+    for var in (
         AdminVars.SURFACE,
+        AdminVars.BORDER,
         AdminVars.TEXT_MUTED,
         AdminVars.SUCCESS_BG,
         AdminVars.ROW_ALT,

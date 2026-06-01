@@ -4,7 +4,6 @@ from src._core.infrastructure.admin.auth import require_auth_allowlisted
 from src._core.infrastructure.admin.base_admin_page import BaseAdminPage
 from src._core.infrastructure.admin.error_handler import admin_error_boundary
 from src._core.infrastructure.admin.layout import admin_layout
-from src._core.infrastructure.admin.theme import AdminClasses
 
 # page_configs is injected by bootstrap_admin() after discovery
 page_configs: list[BaseAdminPage] = []
@@ -34,7 +33,7 @@ async def dashboard_page():
                 )
             ):
                 with ui.row().classes("items-center q-pa-sm"):
-                    ui.icon(pc.icon).classes(f"text-h4 {AdminClasses.ACCENT_ICON}")
+                    ui.icon(pc.icon).classes("text-h4 text-primary")
                     ui.label(pc.display_name).classes("text-h6")
 
         if "accounts" in permissions:
@@ -44,9 +43,7 @@ async def dashboard_page():
                 .on("click", lambda: ui.navigate.to("/admin/accounts"))
             ):
                 with ui.row().classes("items-center q-pa-sm"):
-                    ui.icon("manage_accounts").classes(
-                        f"text-h4 {AdminClasses.ACCENT_ICON}"
-                    )
+                    ui.icon("manage_accounts").classes("text-h4 text-primary")
                     ui.label("Accounts").classes("text-h6")
 
         if "audit_log" in permissions:
@@ -56,5 +53,5 @@ async def dashboard_page():
                 .on("click", lambda: ui.navigate.to("/admin/audit-log"))
             ):
                 with ui.row().classes("items-center q-pa-sm"):
-                    ui.icon("fact_check").classes(f"text-h4 {AdminClasses.ACCENT_ICON}")
+                    ui.icon("fact_check").classes("text-h4 text-primary")
                     ui.label("Audit Log").classes("text-h6")
