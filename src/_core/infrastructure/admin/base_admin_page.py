@@ -11,6 +11,7 @@ from src._core.domain.value_objects.query_filter import QueryFilter
 from src._core.infrastructure.admin.audit import AdminAction, AuditResult
 from src._core.infrastructure.admin.audit.logger import get_audit_logger
 from src._core.infrastructure.admin.error_handler import AdminErrorHandler
+from src._core.infrastructure.admin.theme import AdminClasses, AdminMetrics
 
 if TYPE_CHECKING:
     from src._core.application.dtos.base_response import PaginationInfo
@@ -248,18 +249,15 @@ class BaseAdminPage:
         masked_fields = self.get_masked_field_names()
         row_data = self.build_row_data(dtos, masked_fields)
 
-        grid = (
-            ui.aggrid(
-                {
-                    "columnDefs": column_defs,
-                    "rowData": row_data,
-                    "rowSelection": {"mode": "singleRow"},
-                    "defaultColDef": {"resizable": True, "filter": True},
-                }
-            )
-            .classes("w-full")
-            .style("height: 600px")
-        )
+        grid = ui.aggrid(
+            {
+                "columnDefs": column_defs,
+                "rowData": row_data,
+                "rowSelection": {"mode": "singleRow"},
+                "rowHeight": AdminMetrics.GRID_ROW_HEIGHT,
+                "defaultColDef": {"resizable": True, "filter": True},
+            }
+        ).classes(f"w-full {AdminClasses.GRID}")
 
         grid.on(
             "cellClicked",
@@ -317,9 +315,7 @@ class BaseAdminPage:
                     display_value = str(value) if value is not None else ""
 
                 with ui.row().classes("items-center q-py-xs"):
-                    ui.label(col.header_name).classes("text-weight-bold").style(
-                        "width: 160px"
-                    )
+                    ui.label(col.header_name).classes(AdminClasses.FIELD_LABEL)
                     ui.label(display_value)
 
     # ── Data transformation helpers ──
@@ -334,7 +330,13 @@ class BaseAdminPage:
                 "sortable": col.sortable,
             }
             if col.width:
+                # Honor the explicit width exactly — no minWidth floor that would
+                # silently widen a deliberately narrow column (e.g. an 80px ID).
                 col_def["width"] = col.width
+            else:
+                # Width-less columns flex to fill, with a sane minimum.
+                col_def["flex"] = 1
+                col_def["minWidth"] = AdminMetrics.GRID_MIN_COL_WIDTH
             if col.masked:
                 col_def["valueFormatter"] = "value ? '****' : ''"
             column_defs.append(col_def)

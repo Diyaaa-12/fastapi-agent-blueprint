@@ -87,6 +87,15 @@ class Settings(BaseSettings):
         default_factory=lambda: secrets.token_urlsafe(32),
         validation_alias="ADMIN_STORAGE_SECRET",
     )
+    # Initial dark-mode policy for the NiceGUI admin shell (#193). Decides the
+    # first-paint theme passed to ``ui.run_with(dark=...)``:
+    #   None  -> follow the browser/OS ``prefers-color-scheme`` (default)
+    #   False -> always start light · True -> always start dark
+    # The in-header toggle overrides this per session via ``app.storage.user``.
+    admin_dark_mode_default: bool | None = Field(
+        default=None,
+        validation_alias="ADMIN_DARK_MODE_DEFAULT",
+    )
     admin_bootstrap_enabled: bool = Field(
         default=False,
         validation_alias="ADMIN_BOOTSTRAP_ENABLED",
