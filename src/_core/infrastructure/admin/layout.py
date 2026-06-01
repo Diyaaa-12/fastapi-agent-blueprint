@@ -60,12 +60,20 @@ def admin_layout(
         if permissions is None or pc.domain_name in permissions
     ]
 
+    # Create the drawer first so the header hamburger can toggle it. Quasar
+    # auto-overlays the drawer below its breakpoint (narrow viewports); the
+    # hamburger also lets desktop users collapse it.
+    drawer = ui.left_drawer(top_corner=True, bottom_corner=True).classes(
+        AdminClasses.DRAWER
+    )
+
     with ui.header(elevated=True).classes(
         f"items-center justify-between {AdminClasses.HEADER}"
     ):
-        # Brand: an icon stands in for a project logo (swap for ui.image in a
-        # fork) + the configurable brand name.
+        # Brand: a hamburger (responsive toggle) + an icon standing in for a
+        # project logo (swap for ui.image in a fork) + the brand name.
         with ui.row().classes(f"items-center q-gutter-sm {AdminClasses.BRAND}"):
+            ui.button(icon="menu", on_click=drawer.toggle).props("flat dense")
             ui.icon("smart_toy").classes("text-h5")
             ui.label(settings.admin_brand_name).classes("text-h6")
         with ui.row().classes("items-center q-gutter-xs"):
@@ -83,9 +91,7 @@ def admin_layout(
                 on_click=_handle_logout,
             ).props("flat")
 
-    with ui.left_drawer(top_corner=True, bottom_corner=True).classes(
-        AdminClasses.DRAWER
-    ):
+    with drawer:
         _nav_item(
             label="Dashboard",
             icon="dashboard",
