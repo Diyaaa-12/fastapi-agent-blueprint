@@ -1,6 +1,6 @@
 import secrets
 import warnings
-from typing import Self
+from typing import Literal, Self
 
 from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -95,6 +95,13 @@ class Settings(BaseSettings):
     admin_dark_mode_default: bool | None = Field(
         default=None,
         validation_alias="ADMIN_DARK_MODE_DEFAULT",
+    )
+    # Admin shell color palette preset (#193). "default" = classic blue,
+    # "slate" = modern slate + indigo. Drives the --q-*/--admin-* CSS variables;
+    # the look can be rebranded by adding a preset in admin/theme.py.
+    admin_theme_palette: Literal["default", "slate"] = Field(
+        default="default",
+        validation_alias="ADMIN_THEME_PALETTE",
     )
     admin_bootstrap_enabled: bool = Field(
         default=False,

@@ -63,8 +63,12 @@ def admin_layout(
     with ui.header(elevated=True).classes(
         f"items-center justify-between {AdminClasses.HEADER}"
     ):
-        ui.label("Admin Dashboard").classes("text-h6")
-        with ui.row().classes("items-center"):
+        # Brand: an icon stands in for a project logo (swap for ui.image in a
+        # fork) + the dashboard name.
+        with ui.row().classes("items-center q-gutter-sm"):
+            ui.icon("space_dashboard").classes("text-h5")
+            ui.label("Admin Dashboard").classes("text-h6")
+        with ui.row().classes("items-center q-gutter-xs"):
             _render_dark_mode_toggle()
             username = session.username if session else _app_username()
             if username:

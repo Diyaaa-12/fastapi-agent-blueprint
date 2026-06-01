@@ -108,55 +108,122 @@ class AdminClasses:
     HIDDEN: Final = "admin-hidden"
 
 
-def build_admin_css() -> str:
+# ── Palette presets (#193) ──
+#
+# Each palette supplies the light (:root) and dark (.body--dark) values for the
+# Quasar brand + semantic tokens. Layout tokens (grid height, label width) are
+# palette-independent and emitted separately. Selected at boot via the
+# ``ADMIN_THEME_PALETTE`` setting so the look can be compared/rebranded without
+# touching code.
+DEFAULT_PALETTE: Final = "default"
+
+_LAYOUT_TOKENS: Final = {
+    AdminVars.GRID_HEIGHT: "calc(100vh - 240px)",
+    AdminVars.GRID_HEIGHT_COMPACT: "calc(100vh - 360px)",
+    AdminVars.LABEL_COL_WIDTH: "160px",
+}
+
+_PALETTES: Final = {
+    # Classic blue — the original look, brand from AdminColors.
+    "default": {
+        "light": {
+            AdminVars.Q_PRIMARY: AdminColors.PRIMARY,
+            AdminVars.Q_SECONDARY: AdminColors.SECONDARY,
+            AdminVars.Q_ACCENT: AdminColors.ACCENT,
+            AdminVars.Q_POSITIVE: AdminColors.POSITIVE,
+            AdminVars.Q_NEGATIVE: AdminColors.NEGATIVE,
+            AdminVars.Q_WARNING: AdminColors.WARNING,
+            AdminVars.Q_INFO: AdminColors.INFO,
+            AdminVars.HEADER_BG: AdminColors.PRIMARY,
+            AdminVars.HEADER_TEXT: "#ffffff",
+            AdminVars.DRAWER_BG: "#eff6ff",
+            AdminVars.NAV_ACTIVE: "#1e40af",
+            AdminVars.SURFACE: "#ffffff",
+            AdminVars.BORDER: "#e2e8f0",
+            AdminVars.TEXT_MUTED: "#64748b",
+            AdminVars.SUCCESS_BG: "#f0fdf4",
+            AdminVars.ROW_ALT: "#f8fafc",
+            AdminVars.ROW_HOVER: "#eef2ff",
+        },
+        "dark": {
+            AdminVars.HEADER_BG: "#1e293b",
+            AdminVars.HEADER_TEXT: "#f1f5f9",
+            AdminVars.DRAWER_BG: "#0f172a",
+            AdminVars.NAV_ACTIVE: "#60a5fa",
+            AdminVars.SURFACE: "#1e293b",
+            AdminVars.BORDER: "#334155",
+            AdminVars.TEXT_MUTED: "#94a3b8",
+            AdminVars.SUCCESS_BG: "#052e16",
+            AdminVars.ROW_ALT: "#0f172a",
+            AdminVars.ROW_HOVER: "#1e293b",
+        },
+    },
+    # Modern slate + indigo — neutral slate surfaces, indigo accent, dark header.
+    "slate": {
+        "light": {
+            AdminVars.Q_PRIMARY: "#4f46e5",
+            AdminVars.Q_SECONDARY: "#64748b",
+            AdminVars.Q_ACCENT: "#6366f1",
+            AdminVars.Q_POSITIVE: "#16a34a",
+            AdminVars.Q_NEGATIVE: "#e11d48",
+            AdminVars.Q_WARNING: "#d97706",
+            AdminVars.Q_INFO: "#0ea5e9",
+            AdminVars.HEADER_BG: "#1e293b",
+            AdminVars.HEADER_TEXT: "#f8fafc",
+            AdminVars.DRAWER_BG: "#f8fafc",
+            AdminVars.NAV_ACTIVE: "#4f46e5",
+            AdminVars.SURFACE: "#ffffff",
+            AdminVars.BORDER: "#e2e8f0",
+            AdminVars.TEXT_MUTED: "#64748b",
+            AdminVars.SUCCESS_BG: "#f0fdf4",
+            AdminVars.ROW_ALT: "#f1f5f9",
+            AdminVars.ROW_HOVER: "#eef2ff",
+        },
+        "dark": {
+            AdminVars.HEADER_BG: "#020617",
+            AdminVars.HEADER_TEXT: "#e2e8f0",
+            AdminVars.DRAWER_BG: "#0f172a",
+            AdminVars.NAV_ACTIVE: "#818cf8",
+            AdminVars.SURFACE: "#1e293b",
+            AdminVars.BORDER: "#334155",
+            AdminVars.TEXT_MUTED: "#94a3b8",
+            AdminVars.SUCCESS_BG: "#052e16",
+            AdminVars.ROW_ALT: "#0f172a",
+            AdminVars.ROW_HOVER: "#1e293b",
+        },
+    },
+}
+
+PALETTES: Final = tuple(_PALETTES)
+
+
+def _emit_vars(mapping: dict[str, str]) -> str:
+    return "\n".join(f"  {name}: {value};" for name, value in mapping.items())
+
+
+def build_admin_css(palette: str = DEFAULT_PALETTE) -> str:
     """Return the single CSS payload injected app-wide for the admin theme.
 
     Pure string builder (no nicegui import) so it is unit-testable without the
-    ``admin`` extra. Defines ``:root`` (light) + ``.body--dark`` (dark) blocks
-    for every Quasar brand and ``--admin-*`` token, then the helper classes that
-    consume them.
+    ``admin`` extra. Emits ``:root`` (light) + ``.body--dark`` (dark) blocks for
+    the selected palette, then the palette-independent helper classes.
+    Unknown palette names fall back to :data:`DEFAULT_PALETTE`.
     """
+    name = palette if palette in _PALETTES else DEFAULT_PALETTE
+    preset = _PALETTES[name]
+    root_vars = {**preset["light"], **_LAYOUT_TOKENS}
     return f"""
-/* === Admin theme (#193) — light defaults === */
+/* === Admin theme (#193) — palette: {name} (light) === */
 :root {{
-  {AdminVars.Q_PRIMARY}: {AdminColors.PRIMARY};
-  {AdminVars.Q_SECONDARY}: {AdminColors.SECONDARY};
-  {AdminVars.Q_ACCENT}: {AdminColors.ACCENT};
-  {AdminVars.Q_POSITIVE}: {AdminColors.POSITIVE};
-  {AdminVars.Q_NEGATIVE}: {AdminColors.NEGATIVE};
-  {AdminVars.Q_WARNING}: {AdminColors.WARNING};
-  {AdminVars.Q_INFO}: {AdminColors.INFO};
-
-  {AdminVars.HEADER_BG}: {AdminColors.PRIMARY};
-  {AdminVars.HEADER_TEXT}: #ffffff;
-  {AdminVars.DRAWER_BG}: #eff6ff;
-  {AdminVars.NAV_ACTIVE}: #1e40af;
-  {AdminVars.SURFACE}: #ffffff;
-  {AdminVars.BORDER}: #e2e8f0;
-  {AdminVars.TEXT_MUTED}: #64748b;
-  {AdminVars.SUCCESS_BG}: #f0fdf4;
-  {AdminVars.ROW_ALT}: #f8fafc;
-  {AdminVars.ROW_HOVER}: #eef2ff;
-  {AdminVars.GRID_HEIGHT}: calc(100vh - 240px);
-  {AdminVars.GRID_HEIGHT_COMPACT}: calc(100vh - 360px);
-  {AdminVars.LABEL_COL_WIDTH}: 160px;
+{_emit_vars(root_vars)}
 }}
 
 /* === Admin theme (#193) — dark overrides (Quasar body--dark) === */
 .body--dark {{
-  {AdminVars.HEADER_BG}: #1e293b;
-  {AdminVars.HEADER_TEXT}: #f1f5f9;
-  {AdminVars.DRAWER_BG}: #0f172a;
-  {AdminVars.NAV_ACTIVE}: #60a5fa;
-  {AdminVars.SURFACE}: #1e293b;
-  {AdminVars.BORDER}: #334155;
-  {AdminVars.TEXT_MUTED}: #94a3b8;
-  {AdminVars.SUCCESS_BG}: #052e16;
-  {AdminVars.ROW_ALT}: #0f172a;
-  {AdminVars.ROW_HOVER}: #1e293b;
+{_emit_vars(preset["dark"])}
 }}
 
-/* === Helper classes consuming the tokens === */
+/* === Helper classes consuming the tokens (palette-independent) === */
 .{AdminClasses.HEADER} {{
   background-color: var({AdminVars.HEADER_BG}) !important;
   color: var({AdminVars.HEADER_TEXT}) !important;
@@ -233,5 +300,7 @@ def install_admin_theme_css() -> None:
         return
     from nicegui import ui
 
-    ui.add_css(build_admin_css(), shared=True)
+    from src._core.config import settings
+
+    ui.add_css(build_admin_css(settings.admin_theme_palette), shared=True)
     _theme_css_installed = True

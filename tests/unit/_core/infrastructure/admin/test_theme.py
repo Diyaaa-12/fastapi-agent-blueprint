@@ -8,7 +8,9 @@ import lazy inside ``install_admin_theme_css`` — so they run under
 from __future__ import annotations
 
 from src._core.infrastructure.admin.theme import (
+    DEFAULT_PALETTE,
     EMPTY_DISPLAY,
+    PALETTES,
     AdminClasses,
     AdminColors,
     AdminMetrics,
@@ -109,3 +111,25 @@ def test_css_styles_alternating_grid_rows_via_theming_vars():
     css = build_admin_css()
     assert "--ag-odd-row-background-color" in css
     assert "--ag-row-hover-color" in css
+
+
+def test_default_palette_is_known():
+    assert DEFAULT_PALETTE in PALETTES
+
+
+def test_each_palette_builds_valid_css_with_both_blocks():
+    for palette in PALETTES:
+        css = build_admin_css(palette)
+        assert ":root {" in css and ".body--dark {" in css
+        # Every semantic surface defined in both themes for every palette.
+        for var in (AdminVars.HEADER_BG, AdminVars.SURFACE, AdminVars.ROW_ALT):
+            assert css.count(var) >= 2, f"{var} not in both blocks for {palette}"
+
+
+def test_palettes_are_visually_distinct():
+    """The two presets must differ (so previewing them is meaningful)."""
+    assert build_admin_css("default") != build_admin_css("slate")
+
+
+def test_unknown_palette_falls_back_to_default():
+    assert build_admin_css("does-not-exist") == build_admin_css(DEFAULT_PALETTE)
