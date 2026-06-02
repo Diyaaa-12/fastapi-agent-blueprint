@@ -17,6 +17,7 @@ Components must NEVER import base_admin_page (cycle).
 
 from __future__ import annotations
 
+from src._core.infrastructure.admin.components.charts import bar_chart
 from src._core.infrastructure.admin.components.containers import (
     card,
     field_row,
@@ -45,6 +46,7 @@ from src._core.infrastructure.admin.components.headers import page_header
 
 __all__ = [
     "action_dialog",
+    "bar_chart",
     "card",
     "confirm_dialog",
     "data_grid",
