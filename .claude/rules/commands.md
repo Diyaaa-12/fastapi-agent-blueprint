@@ -141,7 +141,7 @@ uv sync --extra admin   # install; → http://127.0.0.1:8001/admin
 # If not installed: server boots normally, emits admin_mount_skipped log
 
 # UI theming (#193): style preset + brand + initial dark mode
-ADMIN_THEME_PALETTE=slate uv run python run_server_local.py --env local   # default|linear|shadcn|supabase
+ADMIN_THEME_PALETTE=shadcn uv run python run_server_local.py --env local  # default|linear|shadcn|supabase
 ADMIN_BRAND_NAME="Acme Admin" ...      # header/login brand text
 ADMIN_DARK_MODE_DEFAULT=true ...       # unset=follow OS; true/false to force
 ```
