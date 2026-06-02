@@ -9,27 +9,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.7.0] - 2026-06-02
 
-This release reworks the NiceGUI admin **landing page** into an at-a-glance data
-dashboard and polishes the admin design system, while CRUD pages stay
-intentionally functional and copyable. Three threads: **(1) Dashboard** — a
-permission-aware read facade feeds domain record counts, audit totals/failures,
-an activity chart, and a recent-activity table, each degrading gracefully when
-its source is unavailable; **(2) Design system** — the first ECharts builder
-(`c.bar_chart`) joins the component library with a palette-aware fill and a
-height token; **(3) Look & feel** — the dark theme moves from blue-navy to a
-neutral charcoal/zinc cohesive across all presets, and the sidebar collapses to
-an icon-only mini rail.
+This release hardens the admin and AI-agent surfaces and reworks the admin UI.
+Four threads: **(1) Admin security** — a separate admin-identity bounded context
+with its own JWT realm, server-route RBAC, a setup wizard with page-level
+permissions, and an audit log with a retention pipeline; **(2) AI guardrails** —
+OWASP LLM01 / LLM07 prompt-injection defenses across the PydanticAI call sites
+(structural → runtime → observability); **(3) Admin UX** — a token-driven design
+system, a data-dashboard landing, centralized error handling, and loading
+states; **(4) Release hygiene** — version, CHANGELOG, and project-status sync.
+
+> Spans every change merged since v0.6.0 (2026-05-07); no interim release was tagged.
 
 ### Added
 
-- Admin dashboard read facade (`src/_apps/admin/dashboard_metrics.py`) — gathers all landing-page metrics concurrently with per-source isolation: never raises into the page, logs failures with `error_type` only (no `str(exc)` leak), and gates the audit read behind the `audit_log` permission so unauthorized operators never cause audit data to be read server-side ([#223](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/223))
-- Redesigned `/admin/` landing — domain record-count stat cards, audit totals + recent-failures, a "Recent Activity by Action" chart, a recent-activity table, and quick-action nav, replacing the flat nav-card grid; CRUD list/detail pages unchanged ([#223](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/223))
-- `c.bar_chart()` — first ECharts builder in the admin component library, with a palette-aware bar fill (`palette_accent`), the `--admin-chart-height` token, and `AdminClasses.CHART`; cataloged in `docs/ai/shared/admin-design-system.md` ([#223](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/223))
+- **Admin identity bounded context** (`src/admin_identity/`, ADR 049) — admin/operator identity separated from customer identity, with its own credential store (`admin_identity` + `admin_refresh_token` tables) **and** its own JWT realm (distinct `ADMIN_JWT_SECRET_KEY` / issuer / audience; a config validator rejects realm collapse). Adds `/v1/admin/login|refresh|logout`; the shared `JwtTokenCodec` is extracted to `src/_core/common/` ([#218](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/218))
+- **Server-route RBAC for `/v1/user`** — a `require_admin` interface dependency (admin-realm token required; a customer token resolves to `401 INVALID_TOKEN`, the trust boundary) gates all `/v1/user` reads + writes at the router level (default-deny); non-admin self-service stays on `/v1/auth/me` ([#199](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/199))
+- **Admin setup wizard + page-level permissions** — a one-time `/admin/setup` creates the first real admin (the bootstrap credential is permanently disabled afterward), backed by `AdminAccountUseCase` + `AdminPermissionRegistry`; `/admin/accounts` UI for account create/delete/permission-edit with a last-admin guard, a forced password-change flow, and a mandatory `require_auth(page_key=...)` per-route gate (AST-enforced) ([#194](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/194))
+- **Admin audit log** — `src/_core/infrastructure/admin/audit/` (model + `AdminAuditLogRepository` + `AuditLogger` facade + `@audit_action` decorator) records login/logout, account/permission/password, and first-admin events as `SUCCESS`/`FAILURE` with an `error_code` (never raw `str(exc)`, no password hashes). Adds the `/admin/audit-log` operator UI, a per-domain read-event opt-in (`BaseAdminPage.log_reads`), and a `TaskiqScheduler` retention-cleanup job (`make scheduler`, `audit_log_retention_days`) ([#196](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/196), [#206](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/206))
+- **Prompt-injection guardrails (OWASP LLM01 / LLM07)** across the PydanticAI RAG + classifier call sites:
+  - *Structural* — `instructions=` slot migration + `Final[LiteralString]` persona; retrieved documents and user input wrapped in boundary XML and escaped via `escape_for_prompt_xml` ([#197](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/197))
+  - *Runtime* — `src/_core/infrastructure/llm/guardrails.py`: input injection detection (block), output PII-fabrication diff (block), prompt-leak (log-only); a `GUARDRAILS_ENABLED` DI kill-switch ([#209](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/209))
+  - *Observability* — an `ai_usage.guardrail_triggered` flag through the usage ledger, a `/v1/usage?guardrailTriggered=` filter, standardized telemetry, and a red-team regression corpus ([#211](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/211))
+- **Admin design system** — a token-driven theme (`theme.py`: 4 style presets via `ADMIN_THEME_PALETTE`, dark mode, self-hosted Wanted Sans) and a `components/` builder library, with the `docs/ai/shared/admin-design-system.md` catalog ([#193](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/193))
+- **Admin data dashboard** — the `/admin/` landing rebuilt around a `dashboard_metrics` read facade (per-source isolation; audit read gated on the `audit_log` permission): domain record-count stat cards, the first ECharts builder `c.bar_chart()`, a recent-activity table, and quick-action nav ([#223](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/223))
 
 ### Changed
 
-- Admin dark theme retuned from blue-navy (`#0b1120` / `#161b2c`) to a neutral charcoal/zinc palette cohesive with the shadcn / supabase / linear chrome and lifted off near-OLED black for comfort, with a three-step page < chrome < card elevation; `.q-card` now binds its background to `--admin-surface` so the surface token actually applies ([#223](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/223))
-- Admin sidebar collapses to an icon-only **mini rail** instead of hiding entirely — the collapse control sits at the top of the drawer (separated from nav by a divider so it is discoverable and not mistaken for a nav item), nav items carry tooltips + `aria-label` for the collapsed rail, and the header hamburger is now mobile-only ([#223](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/223))
+- **Admin authentication re-homed to `admin_identity`** — the interim single-table admin model (`User.role` / `permissions` / `password_temporary` / `is_bootstrap_admin`, introduced by #154/#194) is removed; the `user` table is now pure customer identity and existing admins are migrated into `admin_identity`. NiceGUI admin login + bootstrap seed are re-pointed accordingly (token-less session shape preserved) ([#218](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/218), supersedes [#154](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/154) / [#194](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/194))
+- **Centralized admin error handling** — `AdminErrorHandler` + `@admin_error_boundary` + a global `app.on_exception` net + an unauthenticated `/admin/error` page; only 4xx `BaseCustomException.message` surfaces (warning), `>=500`/generic show a generic message, and raw `str(exc)` never reaches the UI (full detail goes to the structured log) ([#195](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/195))
+- **Admin loading states** — a `button_loading` context manager on every admin write button + structure-mirroring skeletons on list/detail loads ([#198](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/198))
+- **Admin shell look & feel** — the dark content palette retuned from blue-navy to a neutral charcoal/zinc cohesive with the shadcn/supabase/linear chrome (lifted off near-OLED black; page < chrome < card elevation; `.q-card` bound to `--admin-surface`), and the sidebar now collapses to an icon-only **mini rail** with a top-of-drawer collapse control (nav tooltips + `aria-label`; header hamburger mobile-only) ([#223](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/223))
+
+### Fixed
+
+- Guardrail PII scan no longer false-positives on reformatted phone numbers (regex normalization) ([#214](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/214))
 
 ## [0.6.0] - 2026-05-07
 
