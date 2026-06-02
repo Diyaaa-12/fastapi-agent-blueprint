@@ -78,7 +78,13 @@ def admin_layout(
     nav_state: dict[str, object] = {"mini": False, "collapse_icon": None}
 
     async def _toggle_nav() -> None:
-        width = await ui.run_javascript("window.innerWidth", timeout=2.0)
+        # run_javascript may raise TimeoutError (NiceGUI 3.9+) if the client is
+        # slow/disconnected; fall back to the desktop mini toggle rather than
+        # letting the event handler raise.
+        try:
+            width = await ui.run_javascript("window.innerWidth", timeout=2.0)
+        except Exception:  # noqa: BLE001 - timeout/transport error → desktop default
+            width = None
         if isinstance(width, (int, float)) and width < 1024:
             drawer.toggle()
             return
