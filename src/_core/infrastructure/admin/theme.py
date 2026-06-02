@@ -134,10 +134,11 @@ _LAYOUT_TOKENS: Final = {
     ),
 }
 
-# Wanted Sans webfont (open-sourced by Wanted). Pinned-ish via @latest with a
-# system fallback in the font stack; swap to a version tag for reproducibility.
+# Wanted Sans webfont (open-sourced by Wanted), pinned to an exact tag for
+# reproducibility. The font stack in AdminVars.FONT falls back to system fonts,
+# so a CDN failure degrades gracefully rather than breaking the UI.
 _FONT_CSS_URL: Final = (
-    "https://cdn.jsdelivr.net/gh/wanteddev/wanted-sans@latest/"
+    "https://cdn.jsdelivr.net/gh/wanteddev/wanted-sans@1.0.3/"
     "packages/wanted-sans/fonts/webfonts/variable/complete/WantedSansVariable.min.css"
 )
 

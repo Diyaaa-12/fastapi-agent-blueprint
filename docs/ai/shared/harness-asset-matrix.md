@@ -1,6 +1,6 @@
 # Harness Asset Inventory Matrix
 
-> Last synced: 2026-05-06 (PR-B.2 stale-terminology sweep: LOC corrections + ADR-047 fossil fixes)
+> Last synced: 2026-06-02 (#193: added `admin-design-system.md` Tier 1 row + counts). Prior: 2026-05-06 (PR-B.2 stale-terminology sweep: LOC corrections + ADR-047 fossil fixes)
 > Source of truth: this is a **living inventory**. Update when assets are added, renamed, or removed. `/sync-guidelines` validates that this file matches the actual filesystem.
 > Sibling docs: [ADR 045](../../history/045-hybrid-harness-target-architecture.md) · [target-operating-model.md](target-operating-model.md) · [migration-strategy.md](migration-strategy.md)
 
