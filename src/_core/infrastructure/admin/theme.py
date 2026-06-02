@@ -75,10 +75,11 @@ class AdminVars:
     SHADOW: Final = "--admin-shadow"
     CARD_BORDER: Final = "--admin-card-border"
 
-    # Layout metrics.
+    # Layout metrics + typography.
     GRID_HEIGHT: Final = "--admin-grid-height"
     GRID_HEIGHT_COMPACT: Final = "--admin-grid-height-compact"
     LABEL_COL_WIDTH: Final = "--admin-label-col-width"
+    FONT: Final = "--admin-font"
 
 
 class AdminMetrics:
@@ -125,7 +126,27 @@ _LAYOUT_TOKENS: Final = {
     AdminVars.GRID_HEIGHT: "calc(100vh - 240px)",
     AdminVars.GRID_HEIGHT_COMPACT: "calc(100vh - 360px)",
     AdminVars.LABEL_COL_WIDTH: "160px",
+    # Wanted Sans (self-hosted, see _FONT_FACE_CSS) with a graceful system-font
+    # fallback — so the UI still renders cleanly if the asset fails to load.
+    AdminVars.FONT: (
+        '"Wanted Sans Variable", -apple-system, BlinkMacSystemFont, '
+        '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+    ),
 }
+
+# Wanted Sans webfont (open-sourced by Wanted, SIL OFL 1.1) — self-hosted from
+# the repo (src/_apps/admin/static/fonts/), served at /admin-static by
+# bootstrap_admin(). No external CDN dependency. The AdminVars.FONT stack falls
+# back to system fonts if the asset is missing, so the UI degrades gracefully.
+_FONT_FACE_CSS: Final = """
+@font-face {
+  font-family: "Wanted Sans Variable";
+  font-style: normal;
+  font-weight: 400 1000;
+  font-display: swap;
+  src: url("/admin-static/fonts/WantedSansVariable.woff2") format("woff2-variations");
+}
+"""
 
 _CONTENT_DARK: Final = {
     AdminVars.BG: "#0b1120",
@@ -241,6 +262,9 @@ _HELPER_CSS: Final = """
 /* === Helper classes + Quasar component overrides (token-driven) === */
 body, .q-page-container {
   background-color: var(--admin-bg) !important;
+}
+body {
+  font-family: var(--admin-font) !important;
 }
 /* Chrome: dark header + sidebar, light text. */
 .admin-header {
@@ -373,7 +397,7 @@ def build_admin_css(palette: str = DEFAULT_PALETTE) -> str:
         **_LAYOUT_TOKENS,
     }
     return (
-        f"/* === Admin theme (#193) — palette: {name} === */\n"
+        _FONT_FACE_CSS + f"/* === Admin theme (#193) — palette: {name} === */\n"
         ":root {\n" + _emit_vars(root_vars) + "\n}\n"
         ".body--dark {\n" + _emit_vars(_CONTENT_DARK) + "\n}\n" + _HELPER_CSS
     )
