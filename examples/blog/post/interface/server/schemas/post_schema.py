@@ -17,11 +17,11 @@ class PostResponse(BaseResponse):
 
 
 class CreatePostRequest(BaseRequest):
-    author_id: int
+    author_id: int = Field(ge=1)
     title: str = Field(max_length=255)
-    body: str
+    body: str = Field(max_length=10000)
 
 
 class UpdatePostRequest(BaseRequest):
     title: str | None = Field(default=None, max_length=255)
-    body: str | None = None
+    body: str | None = Field(default=None, max_length=10000)
