@@ -35,18 +35,25 @@ uv run python run_worker_local.py --env quickstart
 > **Taskiq InMemoryBroker Quickstart Limitation:**
 > In zero-config quickstart mode (which defaults to `BROKER_TYPE=inmemory` in `_env/quickstart.env`), Taskiq's `InMemoryBroker` executes tasks synchronously inline within the main API server process (not the worker process).
 > 
-> To see the worker process actively pull and execute jobs asynchronously across process boundaries, run the example with a cross-process broker (such as `BROKER_TYPE=rabbitmq` or `BROKER_TYPE=sqs`) using the local docker-compose stack and the local environment:
+> To see the worker process actively pull and execute jobs asynchronously across process boundaries, you can configure a cross-process broker (such as RabbitMQ) while keeping the quickstart SQLite database (so tables are automatically created on startup without needing Alembic migrations):
 > 
-> ```bash
-> # Start PostgreSQL + RabbitMQ/LocalStack
-> docker compose -f docker-compose.local.yml up -d
+> 1. Start RabbitMQ locally (via Docker):
+>    ```bash
+>    docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
+>    ```
+> 2. Open `_env/quickstart.env` and update the broker settings:
+>    ```env
+>    BROKER_TYPE=rabbitmq
+>    RABBITMQ_URL=amqp://guest:guest@localhost:5672/
+>    ```
+> 3. Run both the server and worker in the `quickstart` environment:
+>    ```bash
+>    # Terminal 1: Start/Restart the server
+>    uv run python run_server_local.py --env quickstart
 > 
-> # Start the server in local env
-> uv run python run_server_local.py --env local
-> 
-> # Start the worker in local env
-> uv run python run_worker_local.py --env local
-> ```
+>    # Terminal 2: Start the worker
+>    uv run python run_worker_local.py --env quickstart
+>    ```
 
 Now, exercise the endpoints using `curl` in a separate terminal:
 
