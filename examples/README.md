@@ -92,7 +92,7 @@ Populated incrementally as contributors land the good-first-issues:
 | Example | Pattern it teaches | Status |
 |---|---|---|
 | `todo/` | Minimal CRUD domain (zero infra) | 🟡 tracked issue |
-| `url-shortener/` | CRUD + Taskiq worker cleanup task | 🟡 tracked issue |
+| `url_shortener/` | CRUD + Taskiq worker cleanup task | 🟡 tracked issue |
 | `blog/` | Two domains + Protocol-based cross-domain DIP | 🟡 tracked issue |
 | `webhook-receiver/` | Worker task driven by a broker message | 🟡 tracked issue |
 | `simple-chatbot/` | Minimal PydanticAI Agent — no RAG | 🟡 tracked issue |

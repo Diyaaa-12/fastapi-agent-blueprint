@@ -5,8 +5,8 @@ two interfaces. The HTTP router creates, reads, and deletes links by short code;
 the Taskiq cleanup worker calls the same `LinkService` to delete expired rows.
 
 > **Note:** Reference code only. Not auto-wired from `examples/`. To run it,
-> copy this folder into `src/url_shortener/` so Python and domain
-> auto-discovery use a valid package name.
+> copy this folder into `src/url_shortener/` so domain auto-discovery picks
+> it up on server and worker startup.
 
 ## What It Teaches
 
@@ -22,12 +22,11 @@ that enqueues work with `.kiq(...)`.
 ## Install The Example
 
 ```bash
-cp -r examples/url-shortener src/url_shortener
+cp -r examples/url_shortener src/url_shortener
 rm -f ./quickstart.db
 make quickstart
 ```
 
-The copied package name is intentionally `url_shortener`, not `url-shortener`.
 `discover_domains()` expects `src/url_shortener/infrastructure/di/url_shortener_container.py`
 and picks up the domain on server and worker startup.
 
@@ -38,6 +37,9 @@ and picks up the domain on server and worker startup.
 - `DELETE /v1/link/{short_code}` — Delete a link by short code
 
 ## Try It With Curl
+
+`expiresAt` values in the examples below are naive UTC datetimes (no timezone
+offset). Match that format when creating links locally.
 
 Create a link that expires in the future:
 
