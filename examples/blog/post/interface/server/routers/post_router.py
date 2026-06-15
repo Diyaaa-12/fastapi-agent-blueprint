@@ -43,9 +43,7 @@ async def list_posts(
     post_service: PostService = Depends(Provide[PostContainer.post_service]),
 ) -> SuccessResponse[list[PostResponse]]:
     datas, pagination = await post_service.get_datas(page=page, page_size=page_size)
-    name_map = await post_service.get_author_display_names(
-        [d.author_id for d in datas]
-    )
+    name_map = await post_service.get_author_display_names([d.author_id for d in datas])
     responses = [
         PostResponse(
             **d.model_dump(),

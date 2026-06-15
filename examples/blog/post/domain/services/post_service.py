@@ -26,9 +26,7 @@ class PostService(BaseService[CreatePostRequest, UpdatePostRequest, PostDTO]):
         authors = await self._author_repository.select_datas_by_ids([author_id])
         return authors[0].display_name if authors else "Unknown"
 
-    async def get_author_display_names(
-        self, author_ids: list[int]
-    ) -> dict[int, str]:
+    async def get_author_display_names(self, author_ids: list[int]) -> dict[int, str]:
         if not author_ids:
             return {}
         authors = await self._author_repository.select_datas_by_ids(
