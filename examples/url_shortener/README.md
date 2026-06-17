@@ -73,10 +73,16 @@ curl -sS -X DELETE http://127.0.0.1:8001/v1/link/docs
 BROKER_TYPE=inmemory
 ```
 
-With the in-memory broker, the task runs in the same process — no separate
-worker is needed.
+With the in-memory broker, `.kiq()` runs the task **inline in the calling
+process** — there is no separate worker to start. The caller therefore has to
+bootstrap the same DI wiring the server/worker normally sets up, so the task's
+`@inject` dependency (`UrlShortenerContainer.link_service`) can resolve. To run
+a real standalone worker across process boundaries instead, switch to a
+cross-process broker such as RabbitMQ — see
+[`examples/webhook_receiver/`](../webhook_receiver/README.md).
 
-Create an already-expired link:
+Create one already-expired link and one that never expires (so you can see the
+task delete only the expired one):
 
 ```bash
 curl -sS -X POST http://127.0.0.1:8001/v1/link \
@@ -86,32 +92,68 @@ curl -sS -X POST http://127.0.0.1:8001/v1/link \
     "targetUrl": "https://example.com/expired",
     "expiresAt": "2000-01-01T00:00:00"
   }'
+
+curl -sS -X POST http://127.0.0.1:8001/v1/link \
+  -H "Content-Type: application/json" \
+  -d '{
+    "shortCode": "keep",
+    "targetUrl": "https://example.com/keep"
+  }'
 ```
 
-Then enqueue the cleanup task from a Python REPL or tiny script:
+Then enqueue the cleanup task. The snippet mirrors the worker bootstrap:
+instantiate the domain container on the shared `CoreContainer`, wire the task
+module, then `kiq()` and await the result.
 
 ```bash
 uv run python - <<'PY'
 import asyncio
 
+from dotenv import load_dotenv
+
+# Load the same env the server booted with, so this snippet points at the
+# same quickstart.db and BROKER_TYPE=inmemory.
+load_dotenv("_env/quickstart.env", override=True)
+
+# Import AFTER load_dotenv so CoreContainer reads the quickstart settings.
+from src._apps.worker.broker import container as core_container
+from src.url_shortener.infrastructure.di.url_shortener_container import (
+    UrlShortenerContainer,
+)
 from src.url_shortener.interface.worker.tasks.cleanup_expired_links_task import (
     cleanup_expired_links_task,
 )
 
 
 async def main() -> None:
+    # Mirror the worker bootstrap: build the domain container on the shared
+    # CoreContainer and wire the task module so @inject can resolve
+    # Provide[UrlShortenerContainer.link_service].
+    url_shortener_container = UrlShortenerContainer(core_container=core_container)
+    url_shortener_container.wire(
+        modules=["src.url_shortener.interface.worker.tasks.cleanup_expired_links_task"]
+    )
+
+    # InMemory broker executes the task inline in THIS process.
     result = await cleanup_expired_links_task.kiq()
-    await result.wait_result()
+    task_result = await result.wait_result()
+    task_result.raise_for_error()  # wait_result() alone won't re-raise task errors
+    print(f"cleanup task deleted {task_result.return_value} expired link(s)")
 
 
 asyncio.run(main())
 PY
 ```
 
-Confirm the expired row is gone:
+You should see:
 
-```bash
-curl -sS http://127.0.0.1:8001/v1/link/expired
+```
+cleanup task deleted 1 expired link(s)
 ```
 
-The response should be a not-found error after the worker processes the task.
+The expired link is now gone while the permanent one is untouched — confirm it
+still resolves:
+
+```bash
+curl -sS http://127.0.0.1:8001/v1/link/keep
+```
