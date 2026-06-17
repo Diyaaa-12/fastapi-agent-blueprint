@@ -1,5 +1,7 @@
+from typing import Annotated
+
 from dependency_injector.wiring import Provide, inject
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Path
 
 from src._core.application.dtos.base_response import SuccessResponse
 
@@ -33,7 +35,7 @@ async def create_link(
 )
 @inject
 async def get_link(
-    short_code: str,
+    short_code: Annotated[str, Path(min_length=1, max_length=64)],
     link_service: LinkService = Depends(Provide[UrlShortenerContainer.link_service]),
 ) -> SuccessResponse[LinkResponse]:
     data = await link_service.get_by_short_code(short_code=short_code)
@@ -48,7 +50,7 @@ async def get_link(
 )
 @inject
 async def delete_link(
-    short_code: str,
+    short_code: Annotated[str, Path(min_length=1, max_length=64)],
     link_service: LinkService = Depends(Provide[UrlShortenerContainer.link_service]),
 ) -> SuccessResponse:
     success = await link_service.delete_by_short_code(short_code=short_code)

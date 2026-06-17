@@ -73,11 +73,8 @@ curl -sS -X DELETE http://127.0.0.1:8001/v1/link/docs
 BROKER_TYPE=inmemory
 ```
 
-In a second terminal, start the worker:
-
-```bash
-uv run python run_worker_local.py --env quickstart
-```
+With the in-memory broker, the task runs in the same process — no separate
+worker is needed.
 
 Create an already-expired link:
 
@@ -103,7 +100,8 @@ from src.url_shortener.interface.worker.tasks.cleanup_expired_links_task import 
 
 
 async def main() -> None:
-    await cleanup_expired_links_task.kiq()
+    result = await cleanup_expired_links_task.kiq()
+    await result.wait_result()
 
 
 asyncio.run(main())
