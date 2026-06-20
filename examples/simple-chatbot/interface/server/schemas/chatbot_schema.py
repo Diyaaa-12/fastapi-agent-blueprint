@@ -7,7 +7,10 @@ class ChatRequest(BaseModel):
     """Validation schema for chat request body."""
 
     prompt: str = Field(
-        ..., min_length=1, description="The user prompt/message to the chatbot"
+        ...,
+        min_length=1,
+        max_length=1000,
+        description="The user prompt/message to the chatbot",
     )
 
 

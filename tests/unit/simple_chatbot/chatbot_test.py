@@ -66,3 +66,22 @@ async def test_chatbot_real_agent_flow(test_db) -> None:
     retrieved = await service.get_reply(message_dto.id)
     assert retrieved.id == message_dto.id
     assert retrieved.reply == message_dto.reply
+
+
+def test_chatbot_request_validation() -> None:
+    from pydantic import ValidationError
+    from src.simple_chatbot.interface.server.schemas.chatbot_schema import (
+        ChatRequest,
+    )
+
+    # 1. Valid prompt should pass
+    req = ChatRequest(prompt="Hello")
+    assert req.prompt == "Hello"
+
+    # 2. Empty prompt should fail (min_length=1)
+    with pytest.raises(ValidationError):
+        ChatRequest(prompt="")
+
+    # 3. Prompt > 1000 chars should fail (max_length=1000)
+    with pytest.raises(ValidationError):
+        ChatRequest(prompt="a" * 1001)
