@@ -17,7 +17,7 @@ It serves as a clean starting point for executing LLM-backed workflows within th
 > Surfaces `tokens_used` for educational visibility only. For production-grade multi-tenant usage/cost tracking, see the `ai_usage` domain (#75).
 
 > [!IMPORTANT]
-> **Production Considerations:** Unlike the database-centric CRUD examples, this example communicates with a real external LLM. For production deployments, you must implement authentication, rate limiting, and cost/budget controls. Additionally, see [guardrails.py](file:///Users/vraj21/Desktop/fastapi-open-source/src/_core/infrastructure/llm/guardrails.py) for examples of protecting LLM boundaries against prompt-injection attacks.
+> **Production Considerations:** Unlike the database-centric CRUD examples, this example communicates with a real external LLM. For production deployments, you must implement authentication, rate limiting, and cost/budget controls. Additionally, see [guardrails.py](../../src/_core/infrastructure/llm/guardrails.py) for examples of protecting LLM boundaries against prompt-injection attacks.
 
 ## Running the Example
 
