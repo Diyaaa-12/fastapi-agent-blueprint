@@ -10,6 +10,8 @@ superpowers-inspired design lens:
 
 from __future__ import annotations
 
+import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -17,6 +19,8 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 SHARED_SKILLS = REPO_ROOT / "docs" / "ai" / "shared" / "skills"
 CLAUDE_SKILLS = REPO_ROOT / ".claude" / "skills"
 CODEX_SKILLS = REPO_ROOT / ".agents" / "skills"
+CLAUDE_SESSION_START = REPO_ROOT / ".claude" / "hooks" / "session-start-context.sh"
+CODEX_STOP_HOOK = REPO_ROOT / ".codex" / "hooks" / "stop-sync-reminder.py"
 
 _SHARED = REPO_ROOT / ".agents" / "shared"
 if str(_SHARED) not in sys.path:
@@ -201,3 +205,42 @@ def test_workflow_advisory_segments_fail_open_on_corrupt_ledger(
     )
 
     assert isinstance(segments, list)
+
+
+def test_claude_session_start_expands_native_workflow_summary(tmp_path) -> None:
+    state_dir = tmp_path / ".agents" / "state"
+    state_dir.mkdir(parents=True)
+    ledger = wl._default_ledger()
+    ledger["workflow"]["stage"] = "executing"
+    ledger["workflow"]["plan_ref"] = "issue #257"
+    ledger["workflow"]["current_task"] = "Task 1"
+    ledger["workflow"]["review"]["status"] = "pending"
+    (state_dir / "current-work.json").write_text(json.dumps(ledger), encoding="utf-8")
+
+    result = subprocess.run(  # noqa: S603
+        ["bash", str(CLAUDE_SESSION_START)],
+        cwd=REPO_ROOT,
+        env={**__import__("os").environ, "HARNESS_STATE_ROOT": str(tmp_path)},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "$SUMMARY" not in result.stdout
+    assert "Stage    : executing" in result.stdout
+    assert "Plan ref : issue #257" in result.stdout
+    assert "Task     : Task 1" in result.stdout
+    assert "Review   : pending" in result.stdout
+
+
+def test_codex_stop_hook_refreshes_work_ledger_before_building_segments() -> None:
+    source = CODEX_STOP_HOOK.read_text(encoding="utf-8")
+
+    update_pos = source.index("update_verification_from_git()")
+    build_pos = source.index("segments = build_segments()")
+
+    assert update_pos < build_pos, (
+        "Codex Stop hook must refresh work-ledger verification state before "
+        "building native workflow advisory segments."
+    )
