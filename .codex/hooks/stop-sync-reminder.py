@@ -157,6 +157,32 @@ def build_segments(changed: list[str] | None = None) -> list[str]:
             if seg:
                 segments.append(seg)
 
+    # (4) Native workflow advisory — fail-open and advisory-only.
+    with contextlib.suppress(Exception):
+        from work_ledger import build_workflow_advisory_segments  # noqa: PLC0415
+
+        governor_changing = False
+        with contextlib.suppress(Exception):
+            from governor import (  # noqa: PLC0415
+                is_governor_changing,
+                is_log_only_backfill,
+                parse_trigger_globs,
+            )
+
+            globs = parse_trigger_globs()
+            governor_changing = (
+                bool(changed)
+                and not is_log_only_backfill(changed)
+                and is_governor_changing(changed, globs)
+            )
+
+        segments.extend(
+            build_workflow_advisory_segments(
+                changed_files=changed,
+                governor_changing=governor_changing,
+            )
+        )
+
     return segments
 
 

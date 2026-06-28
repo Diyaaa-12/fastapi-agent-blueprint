@@ -155,6 +155,26 @@ This is the primary cross-tool clarification: what comes from the upstream "supe
 - Substituting any project-specific skill with a generic philosophy reference.
 - Allowing the philosophy port to weaken any architectural ADR.
 
+### Native execution workflow (issue #257)
+
+The native harness owns the execution workflow after the design phase. Upstream
+superpowers may be used as a design lens while shaping the harness, but routine
+project operation remains local: `/plan-feature` / `$plan-feature` produces an
+Execution Packet, then `/execute-plan` / `$execute-plan` executes complex,
+architecture-changing, governor-changing, or multi-task work.
+
+The Execution Packet is the boundary between planning and implementation. It
+contains Goal, Scope, Success Criteria, Selected Approach, Architecture Impact,
+Task List, Verification Gates, and Review Gates. The packet is recorded in the
+shared work ledger so Claude and Codex can resume with the same current task,
+verification state, and review state.
+
+Enforcement is advisory-first. Stop hooks may remind the agent when native
+harness workflow state is missing, verification is pending, or governor-changing
+work lacks recorded review state. Future PRs may promote only high-confidence
+conditions to hard gates or CI failures after tests prove the detection avoids
+exploration, trivial edits, and single-skill work.
+
 ### Model identity
 
 This is **Mostly Local with Philosophy Overlay**, matching the bucket distribution in [harness-asset-matrix.md](harness-asset-matrix.md): ~80% Keep / ~20% Overlay / 0% Replace / 0% Drop (Phase 5 #124 closure; matrix is canonical). The philosophy port adds the framing / governance layer; the substantive content is and remains local.
