@@ -1,0 +1,52 @@
+from __future__ import annotations
+
+from typing import Any, Final, LiteralString
+
+from examples.chatbot_with_memory.domain.dtos.chatbot_memory_dto import ChatReply
+
+_INSTRUCTIONS: Final[LiteralString] = (
+    "You are a helpful assistant with memory of the conversation. "
+    "Use the conversation history to provide context-aware replies."
+)
+
+
+class PydanticAIChatbotMemory:
+    """Real LLM-backed chatbot adapter with conversation history support."""
+
+    def __init__(self, llm_model: Any) -> None:
+        try:
+            from pydantic_ai import Agent
+        except ImportError:
+            raise ImportError(
+                "pydantic-ai is required for the chatbot-with-memory example. "
+                "Install it with: uv sync --extra pydantic-ai"
+            )
+
+        self._agent: Agent[None, ChatReply] = Agent(
+            model=llm_model,
+            output_type=ChatReply,
+            instructions=_INSTRUCTIONS,
+        )
+
+    async def generate_reply(
+        self, prompt: str, history: list[dict[str, str]]
+    ) -> tuple[ChatReply, Any]:
+        """Generate a reply using PydanticAI Agent with conversation history.
+
+        Args:
+            prompt: The user input text.
+            history: Prior conversation turns as role/content dicts.
+
+        Returns:
+            A tuple of (ChatReply, usage).
+        """
+        # Build full prompt by prepending history as context
+        history_text = ""
+        for turn in history:
+            role_label = "User" if turn["role"] == "user" else "Assistant"
+            history_text += f"{role_label}: {turn['content']}\n"
+
+        full_prompt = f"{history_text}User: {prompt}" if history_text else prompt
+
+        result = await self._agent.run(full_prompt)
+        return result.output, result.usage()
