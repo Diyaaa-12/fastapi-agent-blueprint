@@ -19,8 +19,6 @@ from src._core.application.dtos.base_response import SuccessResponse
 router = APIRouter()
 
 
-
-
 @router.post(
     "/chat/memory",
     summary="Send a message to the memory-aware chatbot",

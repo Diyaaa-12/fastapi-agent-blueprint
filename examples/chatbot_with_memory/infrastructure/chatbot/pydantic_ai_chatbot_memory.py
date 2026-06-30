@@ -28,25 +28,36 @@ class PydanticAIChatbotMemory:
             instructions=_INSTRUCTIONS,
         )
 
-    async def generate_reply(
-        self, prompt: str, history: list[dict[str, str]]
-    ) -> tuple[ChatReply, Any]:
-        """Generate a reply using PydanticAI Agent with conversation history.
 
-        Args:
-            prompt: The user input text.
-            history: Prior conversation turns as role/content dicts.
+async def generate_reply(
+    self, prompt: str, history: list[dict[str, str]]
+) -> tuple[ChatReply, Any]:
+    """Generate a reply using PydanticAI Agent with structured conversation history.
 
-        Returns:
-            A tuple of (ChatReply, usage).
-        """
-        # Build full prompt by prepending history as context
-        history_text = ""
-        for turn in history:
-            role_label = "User" if turn["role"] == "user" else "Assistant"
-            history_text += f"{role_label}: {turn['content']}\n"
+    Args:
+        prompt: The user input text.
+        history: Prior conversation turns as role/content dicts.
 
-        full_prompt = f"{history_text}User: {prompt}" if history_text else prompt
+    Returns:
+        A tuple of (ChatReply, usage).
+    """
+    from pydantic_ai.messages import (
+        ModelRequest,
+        ModelResponse,
+        TextPart,
+        UserPromptPart,
+    )
 
-        result = await self._agent.run(full_prompt)
-        return result.output, result.usage()
+    message_history = []
+    for turn in history:
+        if turn["role"] == "user":
+            message_history.append(
+                ModelRequest(parts=[UserPromptPart(content=turn["content"])])
+            )
+        else:
+            message_history.append(
+                ModelResponse(parts=[TextPart(content=turn["content"])])
+            )
+
+    result = await self._agent.run(prompt, message_history=message_history)
+    return result.output, result.usage()

@@ -36,7 +36,9 @@ class ChatbotMemoryRepository(
             result = await session.execute(
                 select(ChatMemoryMessageModel)
                 .where(ChatMemoryMessageModel.session_id == session_id)
-                .order_by(ChatMemoryMessageModel.created_at)
+                .order_by(ChatMemoryMessageModel.created_at, ChatMemoryMessageModel.id)
             )
             rows = result.scalars().all()
-            return [ChatMessageDTO.model_validate(row) for row in rows]
+            return [
+                ChatMessageDTO.model_validate(row, from_attributes=True) for row in rows
+            ]

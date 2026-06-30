@@ -46,14 +46,13 @@ class ChatMemoryService:
         # 1. Load prior history for this session
         _HISTORY_LIMIT = 20
         prior_messages = await self._repository.select_messages_by_session(
-        session_id=session_id
+            session_id=session_id
         )
         bounded_messages = prior_messages[-_HISTORY_LIMIT:]
 
         # 2. Build history list for the agent
         history = [
-        {"role": msg.role, "content": msg.content}
-        for msg in bounded_messages
+            {"role": msg.role, "content": msg.content} for msg in bounded_messages
         ]
 
         # 3. Generate reply with history context
