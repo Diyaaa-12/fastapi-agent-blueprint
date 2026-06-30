@@ -5,7 +5,10 @@ from typing import Any, Final, LiteralString
 import structlog
 
 from examples.chatbot_with_guardrails.domain.dtos.chatbot_dto import ChatReply
-from src._core.exceptions.llm_exceptions import GuardrailBlocked, PromptInjectionDetected
+from src._core.exceptions.llm_exceptions import (
+    GuardrailBlocked,
+    PromptInjectionDetected,
+)
 from src._core.infrastructure.llm.guardrail_telemetry import log_guardrail_event
 from src._core.infrastructure.llm.guardrails import (
     detect_prompt_injection,
@@ -86,9 +89,11 @@ class PydanticAIChatbot:
             # scan_pii: block on email/ipv4 (precise), log-only on phone
             pii_tokens = scan_pii(reply_text)
             if pii_tokens:
-                blocking = {t for t in pii_tokens if any(
-                    t.startswith(p) for p in _BLOCKING_PII_PREFIXES
-                )}
+                blocking = {
+                    t
+                    for t in pii_tokens
+                    if any(t.startswith(p) for p in _BLOCKING_PII_PREFIXES)
+                }
                 phone_tokens = pii_tokens - blocking
 
                 if phone_tokens:

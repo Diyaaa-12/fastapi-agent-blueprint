@@ -1,11 +1,17 @@
+"""Unit tests for the simple chatbot example."""
+
 import pytest
 import pytest_asyncio
 
-from examples.chatbot_with_guardrails.infrastructure.database.models.chatbot_model import (
+# Force registration of chatbot model onto Base.metadata
+from examples.simple_chatbot.infrastructure.database.models.chatbot_model import (
     ChatMessageModel,
 )
 from src._core.infrastructure.persistence.rdb.config import DatabaseConfig
-from src._core.infrastructure.persistence.rdb.database import Base, Database
+from src._core.infrastructure.persistence.rdb.database import (
+    Base,
+    Database,
+)
 
 
 def _build_test_database() -> Database:

@@ -4,7 +4,9 @@ from examples.chatbot_with_guardrails.domain.dtos.chatbot_dto import (
     ChatMessageDTO,
     CreateChatMessageDTO,
 )
-from examples.chatbot_with_guardrails.domain.protocols.chatbot_protocol import ChatbotProtocol
+from examples.chatbot_with_guardrails.domain.protocols.chatbot_protocol import (
+    ChatbotProtocol,
+)
 from examples.chatbot_with_guardrails.domain.protocols.chatbot_repository_protocol import (
     ChatbotRepositoryProtocol,
 )
@@ -45,7 +47,7 @@ class ChatService:
         return message_dto, chat_reply.confidence
 
     async def get_reply(self, message_id: int) -> ChatMessageDTO:
-         """Retrieve a historical chat message by its database ID.
+        """Retrieve a historical chat message by its database ID.
 
         Args:
             message_id: The primary key of the chat message.
@@ -53,4 +55,4 @@ class ChatService:
         Returns:
             The historical ChatMessageDTO.
         """
-         return await self._repository.select_data_by_id(data_id=message_id)
+        return await self._repository.select_data_by_id(data_id=message_id)

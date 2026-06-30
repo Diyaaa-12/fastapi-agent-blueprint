@@ -1,7 +1,10 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Any
+
 import structlog
+
 from examples.chatbot_with_guardrails.domain.dtos.chatbot_dto import ChatReply
 from src._core.exceptions.llm_exceptions import PromptInjectionDetected
 from src._core.infrastructure.llm.guardrail_telemetry import log_guardrail_event
