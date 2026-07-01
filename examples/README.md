@@ -63,6 +63,15 @@ An example PR should include:
      `get_user_by_user_id` vs `get_user_by_ids`). Single-lookup
      examples may keep short names (`get_todo`, `update_todo`,
      `delete_todo`).
+   - **Imports must survive the copy** (CI-enforced): intra-domain
+     imports are package-relative (`from ..dtos...`), cross-domain
+     imports reference the post-copy layout
+     (`from src.<other_domain>...`), and bootstraps wire imported
+     module objects (`wire(modules=[<router module>])`). Absolute
+     `examples.*` imports are rejected by
+     `tools/check_examples_copyflow.py` (pre-commit + CI) and every
+     example is booted post-copy by
+     `tests/integration/examples/test_copyflow_smoke.py`.
 2. **A README** in `examples/{name}/README.md` covering:
    - What pattern the example teaches (2–3 sentences).
    - `curl` requests a reader can paste to exercise the endpoints.
