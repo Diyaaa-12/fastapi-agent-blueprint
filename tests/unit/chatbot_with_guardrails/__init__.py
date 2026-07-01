@@ -1,1 +1,1 @@
-"""Unit tests for the simple chatbot example."""
+"""Unit tests for the chatbot-with-guardrails example."""

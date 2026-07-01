@@ -26,8 +26,10 @@ def setup_chatbot_with_guardrails_routes(app: FastAPI) -> None:
 
 def bootstrap_chatbot_with_guardrails_domain(
     app: FastAPI,
-    container: ChatbotWithGuardrailsContainer,
+    chatbot_with_guardrails_container: ChatbotWithGuardrailsContainer,
 ) -> None:
     """Bootstrap the chatbot-with-guardrails example domain on the server."""
-    create_chatbot_with_guardrails_container(container=container)
+    create_chatbot_with_guardrails_container(
+        container=chatbot_with_guardrails_container
+    )
     setup_chatbot_with_guardrails_routes(app=app)

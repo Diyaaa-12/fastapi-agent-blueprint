@@ -69,9 +69,10 @@ Returns `400`:
 
 ```json
 {
+  "success": false,
   "message": "Request blocked by input guardrail.",
-  "error_code": "PROMPT_INJECTION_DETECTED",
-  "error_details": null
+  "errorCode": "PROMPT_INJECTION_DETECTED",
+  "errorDetails": null
 }
 ```
 
@@ -81,9 +82,10 @@ If the model's response contains an email address or IPv4 address, the output gu
 
 ```json
 {
+  "success": false,
   "message": "Response blocked by output guardrail.",
-  "error_code": "GUARDRAIL_BLOCKED",
-  "error_details": null
+  "errorCode": "GUARDRAIL_BLOCKED",
+  "errorDetails": null
 }
 ```
 
