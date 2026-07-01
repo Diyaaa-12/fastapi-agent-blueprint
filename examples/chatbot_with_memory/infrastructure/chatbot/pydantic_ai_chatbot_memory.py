@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Final, LiteralString
 
-from examples.chatbot_with_memory.domain.dtos.chatbot_memory_dto import ChatReply
+from ...domain.dtos.chatbot_memory_dto import ChatReply
 
 _INSTRUCTIONS: Final[LiteralString] = (
     "You are a helpful assistant with memory of the conversation. "
@@ -28,36 +28,35 @@ class PydanticAIChatbotMemory:
             instructions=_INSTRUCTIONS,
         )
 
+    async def generate_reply(
+        self, prompt: str, history: list[dict[str, str]]
+    ) -> tuple[ChatReply, Any]:
+        """Generate a reply using PydanticAI Agent with structured conversation history.
 
-async def generate_reply(
-    self, prompt: str, history: list[dict[str, str]]
-) -> tuple[ChatReply, Any]:
-    """Generate a reply using PydanticAI Agent with structured conversation history.
+        Args:
+            prompt: The user input text.
+            history: Prior conversation turns as role/content dicts.
 
-    Args:
-        prompt: The user input text.
-        history: Prior conversation turns as role/content dicts.
+        Returns:
+            A tuple of (ChatReply, usage).
+        """
+        from pydantic_ai.messages import (
+            ModelRequest,
+            ModelResponse,
+            TextPart,
+            UserPromptPart,
+        )
 
-    Returns:
-        A tuple of (ChatReply, usage).
-    """
-    from pydantic_ai.messages import (
-        ModelRequest,
-        ModelResponse,
-        TextPart,
-        UserPromptPart,
-    )
+        message_history = []
+        for turn in history:
+            if turn["role"] == "user":
+                message_history.append(
+                    ModelRequest(parts=[UserPromptPart(content=turn["content"])])
+                )
+            else:
+                message_history.append(
+                    ModelResponse(parts=[TextPart(content=turn["content"])])
+                )
 
-    message_history = []
-    for turn in history:
-        if turn["role"] == "user":
-            message_history.append(
-                ModelRequest(parts=[UserPromptPart(content=turn["content"])])
-            )
-        else:
-            message_history.append(
-                ModelResponse(parts=[TextPart(content=turn["content"])])
-            )
-
-    result = await self._agent.run(prompt, message_history=message_history)
-    return result.output, result.usage()
+        result = await self._agent.run(prompt, message_history=message_history)
+        return result.output, result.usage()

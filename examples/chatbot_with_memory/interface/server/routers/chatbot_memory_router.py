@@ -3,18 +3,19 @@ from typing import Annotated
 from dependency_injector.wiring import Provide, inject
 from fastapi import APIRouter, Depends, Path
 
-from examples.chatbot_with_memory.domain.services.chatbot_memory_service import (
+from src._core.application.dtos.base_response import SuccessResponse
+
+from ....domain.services.chatbot_memory_service import (
     ChatMemoryService,
 )
-from examples.chatbot_with_memory.infrastructure.di.chatbot_with_memory_container import (
+from ....infrastructure.di.chatbot_with_memory_container import (
     ChatbotWithMemoryContainer,
 )
-from examples.chatbot_with_memory.interface.server.schemas.chatbot_memory_schema import (
+from ..schemas.chatbot_memory_schema import (
     ChatMemoryRequest,
     ChatMemoryResponse,
     ChatMessageResponse,
 )
-from src._core.application.dtos.base_response import SuccessResponse
 
 router = APIRouter()
 

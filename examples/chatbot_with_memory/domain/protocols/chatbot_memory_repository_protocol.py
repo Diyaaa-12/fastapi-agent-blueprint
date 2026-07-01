@@ -1,7 +1,8 @@
 from typing import Protocol
 
-from examples.chatbot_with_memory.domain.dtos.chatbot_memory_dto import ChatMessageDTO
 from src._core.domain.protocols.repository_protocol import BaseRepositoryProtocol
+
+from ..dtos.chatbot_memory_dto import ChatMessageDTO
 
 
 class ChatbotMemoryRepositoryProtocol(BaseRepositoryProtocol[ChatMessageDTO], Protocol):

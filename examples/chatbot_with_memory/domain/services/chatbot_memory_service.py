@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from examples.chatbot_with_memory.domain.dtos.chatbot_memory_dto import (
+from ..dtos.chatbot_memory_dto import (
     ChatMessageDTO,
     ConversationTurnDTO,
     CreateChatMessageDTO,
 )
-from examples.chatbot_with_memory.domain.protocols.chatbot_memory_protocol import (
+from ..protocols.chatbot_memory_protocol import (
     ChatbotMemoryProtocol,
 )
-from examples.chatbot_with_memory.domain.protocols.chatbot_memory_repository_protocol import (
+from ..protocols.chatbot_memory_repository_protocol import (
     ChatbotMemoryRepositoryProtocol,
 )
 

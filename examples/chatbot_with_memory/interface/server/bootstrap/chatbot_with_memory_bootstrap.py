@@ -1,18 +1,16 @@
 from fastapi import FastAPI
 
-from examples.chatbot_with_memory.infrastructure.di.chatbot_with_memory_container import (
+from ....infrastructure.di.chatbot_with_memory_container import (
     ChatbotWithMemoryContainer,
 )
-from examples.chatbot_with_memory.interface.server.routers import chatbot_memory_router
+from ..routers import chatbot_memory_router
 
 
 def create_chatbot_with_memory_container(
     chatbot_with_memory_container: ChatbotWithMemoryContainer,
 ) -> None:
     """Wire dependencies into the chatbot-with-memory router package."""
-    chatbot_with_memory_container.wire(
-        packages=["examples.chatbot_with_memory.interface.server.routers"]
-    )
+    chatbot_with_memory_container.wire(modules=[chatbot_memory_router])
 
 
 def setup_chatbot_with_memory_routes(app: FastAPI) -> None:

@@ -1,18 +1,19 @@
 from dependency_injector import containers, providers
 
-from examples.chatbot_with_memory.domain.services.chatbot_memory_service import (
+from src._core.config import settings
+
+from ...domain.services.chatbot_memory_service import (
     ChatMemoryService,
 )
-from examples.chatbot_with_memory.infrastructure.chatbot.pydantic_ai_chatbot_memory import (
+from ..chatbot.pydantic_ai_chatbot_memory import (
     PydanticAIChatbotMemory,
 )
-from examples.chatbot_with_memory.infrastructure.chatbot.stub_chatbot_memory import (
+from ..chatbot.stub_chatbot_memory import (
     StubChatbotMemory,
 )
-from examples.chatbot_with_memory.infrastructure.repositories.chatbot_memory_repository import (
+from ..repositories.chatbot_memory_repository import (
     ChatbotMemoryRepository,
 )
-from src._core.config import settings
 
 
 def _chatbot_selector() -> str:

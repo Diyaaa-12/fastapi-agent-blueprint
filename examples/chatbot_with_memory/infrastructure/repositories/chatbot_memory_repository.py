@@ -1,14 +1,15 @@
 from sqlalchemy import select
 
-from examples.chatbot_with_memory.domain.dtos.chatbot_memory_dto import ChatMessageDTO
-from examples.chatbot_with_memory.domain.protocols.chatbot_memory_repository_protocol import (
-    ChatbotMemoryRepositoryProtocol,
-)
-from examples.chatbot_with_memory.infrastructure.database.models.chatbot_memory_model import (
-    ChatMemoryMessageModel,
-)
 from src._core.infrastructure.persistence.rdb.base_repository import BaseRepository
 from src._core.infrastructure.persistence.rdb.database import Database
+
+from ...domain.dtos.chatbot_memory_dto import ChatMessageDTO
+from ...domain.protocols.chatbot_memory_repository_protocol import (
+    ChatbotMemoryRepositoryProtocol,
+)
+from ..database.models.chatbot_memory_model import (
+    ChatMemoryMessageModel,
+)
 
 
 class ChatbotMemoryRepository(

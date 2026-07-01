@@ -5,7 +5,7 @@ from typing import Any
 
 import structlog
 
-from examples.chatbot_with_memory.domain.dtos.chatbot_memory_dto import ChatReply
+from ...domain.dtos.chatbot_memory_dto import ChatReply
 
 logger = structlog.stdlib.get_logger(__name__)
 
