@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, Path
 from src._core.application.dtos.base_response import SuccessResponse
 
 from ....domain.services.chatbot_service import ChatService
-from ....infrastructure.di.simple_chatbot_container import (
-    SimpleChatbotContainer,
+from ....infrastructure.di.chatbot_with_guardrails_container import (
+    ChatbotWithGuardrailsContainer,
 )
 from ..schemas.chatbot_schema import (
     ChatHistoryResponse,
@@ -20,7 +20,7 @@ router = APIRouter()
 
 @router.post(
     "/chat",
-    summary="Send a message to the chatbot",
+    summary="Send a message to the guardrail-protected chatbot",
     response_model=SuccessResponse[ChatResponse],
     response_model_exclude={"pagination"},
 )
@@ -28,10 +28,10 @@ router = APIRouter()
 async def chat_reply(
     request: ChatRequest,
     chatbot_service: ChatService = Depends(
-        Provide[SimpleChatbotContainer.chat_service]
+        Provide[ChatbotWithGuardrailsContainer.chat_service]
     ),
 ) -> SuccessResponse[ChatResponse]:
-    """Execute chatbot agent, persist prompt and reply to DB, and return the reply."""
+    """Execute chatbot with runtime guardrails. Returns 400 on injection, 422 on blocked output."""
     message_dto, confidence = await chatbot_service.reply(prompt=request.prompt)
     return SuccessResponse(
         data=ChatResponse(
@@ -44,7 +44,7 @@ async def chat_reply(
 
 @router.get(
     "/chat/{chat_id}",
-    summary="Get a historical chatbot reply",
+    summary="Get a historical guardrail-protected chatbot reply",
     response_model=SuccessResponse[ChatHistoryResponse],
     response_model_exclude={"pagination"},
 )
@@ -52,10 +52,10 @@ async def chat_reply(
 async def get_chat_message(
     chat_id: Annotated[int, Path(ge=1)],
     chatbot_service: ChatService = Depends(
-        Provide[SimpleChatbotContainer.chat_service]
+        Provide[ChatbotWithGuardrailsContainer.chat_service]
     ),
 ) -> SuccessResponse[ChatHistoryResponse]:
-    """Fetch a historical chat message and its metadata from database by ID."""
+    """Fetch a historical chat message by ID."""
     message_dto = await chatbot_service.get_reply(message_id=chat_id)
     return SuccessResponse(
         data=ChatHistoryResponse(

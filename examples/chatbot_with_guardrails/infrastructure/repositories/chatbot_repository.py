@@ -5,7 +5,7 @@ from ...domain.dtos.chatbot_dto import ChatMessageDTO
 from ...domain.protocols.chatbot_repository_protocol import (
     ChatbotRepositoryProtocol,
 )
-from ..database.models.chatbot_model import (
+from ...infrastructure.database.models.chatbot_model import (
     ChatMessageModel,
 )
 

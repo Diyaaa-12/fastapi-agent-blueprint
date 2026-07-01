@@ -2,7 +2,7 @@ from typing import Protocol
 
 from src._core.domain.protocols.repository_protocol import BaseRepositoryProtocol
 
-from ..dtos.chatbot_dto import ChatMessageDTO
+from ...domain.dtos.chatbot_dto import ChatMessageDTO
 
 
 class ChatbotRepositoryProtocol(BaseRepositoryProtocol[ChatMessageDTO], Protocol):
