@@ -229,7 +229,7 @@ rather than primary entry points (`Overlay`).
 
 ### `architecture-review-checklist.md`
 
-- **Current role**: 107-line architecture-audit checklist. Surface for `/review-architecture`.
+- **Current role**: 117-line architecture-audit checklist (10 categories; §10 Examples Copy-Flow added by #260). Surface for `/review-architecture`.
 - **Why it exists**: Standardise the questions a domain or full-repo review must answer.
 - **Replacement feasibility**: None.
 - **Final location**: unchanged.
