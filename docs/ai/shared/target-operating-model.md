@@ -75,7 +75,7 @@ The mandatory-by-default rule is evaluated **per unit of implementation-class wo
 
 The distinguishing test: *is this change required by the approved plan's success criteria, or is it a capability the plan never mentioned?* Small gap-fixes that the current task's success criteria genuinely require are in-scope work, not expansions. Exception tokens keep their §3 semantics — a token that licensed skipping `plan` for the original prompt covers same-scope work only, not a mid-task capability addition.
 
-Enforcement is advisory-first (ADR 050): a stage-gate `PostToolUse` reminder fires once per session when a `.py` file under `src/` or `examples/` is edited while the work ledger's `workflow.stage` is `idle`/`complete`/`blocked` and no exception-token marker is active. Missing or unreadable ledger state stays silent (fail-open) — contributors without the maintainer workflow never see it.
+Enforcement is advisory-first (ADR 050): a stage-gate `PostToolUse` reminder fires once per session when a `.py` file under `src/` or `examples/` is edited while the work ledger's `workflow.stage` is `idle`/`complete`/`blocked` and no *plan-waiver* token marker (`[trivial]`/`[hotfix]`, incl. Korean equivalents) is active — `[exploration]` does not suppress it, since an implementation edit inside a declared read-only session is itself a signal (ADR 050 D6). Missing or unreadable ledger state stays silent (fail-open) — contributors without the maintainer workflow never see it.
 
 ## §3 Allowed Exceptions
 
