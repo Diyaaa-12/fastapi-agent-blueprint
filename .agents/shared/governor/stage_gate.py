@@ -33,6 +33,7 @@ from pathlib import Path
 from .markers import MarkerLifecycle, read_latest_token
 from .paths import REPO_ROOT
 from .time_window import _within_24h
+from .tokens import PLAN_WAIVER_TOKENS
 
 STAGE_GATE_REMINDER = "\n".join(
     [
@@ -40,8 +41,8 @@ STAGE_GATE_REMINDER = "\n".join(
         "Mid-task capability discovery is new implementation-class work: stop,",
         "report the gap, and route to /plan-feature (Claude) or $plan-feature (Codex)",
         "before continuing (AGENTS.md § Mid-Task Scope Expansion, ADR 050).",
-        "For a small self-evident change, silence this with a [trivial] / [hotfix] /",
-        "[exploration] token on your next prompt.",
+        "For a small self-evident change or urgent fix, silence this with a",
+        "[trivial] / [hotfix] token on your next prompt.",
         "Advisory only — fires at most once per session.",
     ]
 )
@@ -89,19 +90,25 @@ def is_implementation_source(
 ) -> bool:
     """True iff ``file_path`` is a ``.py`` file under ``src/`` or ``examples/``.
 
-    Accepts absolute paths (relativised against ``repo_root``) and
-    repo-relative paths. Paths outside the repo return ``False``.
+    Accepts absolute paths and repo-relative paths; both are normalised
+    against ``repo_root`` (R1.2 — ``src/../tests/foo.py`` resolves to
+    ``tests/`` and does not gate). Paths outside the repo return ``False``.
     """
 
     if not file_path or not file_path.endswith(".py"):
         return False
-    path = Path(file_path)
-    if path.is_absolute():
-        try:
-            path = path.resolve().relative_to(repo_root.resolve())
-        except (ValueError, OSError):
-            return False
-    parts = path.parts
+    try:
+        root = repo_root.resolve()
+        candidate = Path(file_path)
+        resolved = (
+            candidate.resolve()
+            if candidate.is_absolute()
+            else (root / candidate).resolve()
+        )
+        rel = resolved.relative_to(root)
+    except (ValueError, OSError):
+        return False
+    parts = rel.parts
     return bool(parts) and parts[0] in IMPLEMENTATION_PREFIXES
 
 
@@ -123,12 +130,17 @@ def has_fired_this_session(state_dir: Path, session_id: str) -> bool:
 
 
 def mark_fired(state_dir: Path, session_id: str) -> Path | None:
-    """Persist the once-per-session marker; prune stale stage-gate markers.
+    """Claim the once-per-session marker; prune stale stage-gate markers.
 
     Pruning removes ``stage-gate-*.json`` files whose ``ts`` is missing,
     unreadable, or older than 24h — this module owns its own marker
     namespace (the Stop hook only consumes ``exception-token-*`` files).
-    Returns the marker path, or ``None`` on write failure (fail-open).
+
+    The claim uses exclusive create (R1.3): when a fresh marker for this
+    session already exists, another writer won the race and this call
+    returns ``None``. Callers must emit the advisory only on a non-``None``
+    return, so concurrent hook invocations produce exactly one reminder.
+    ``None`` is also returned on any write failure (fail-open).
     """
 
     try:
@@ -152,8 +164,11 @@ def mark_fired(state_dir: Path, session_id: str) -> Path | None:
         "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
     try:
-        marker.write_text(json.dumps(record, ensure_ascii=False), encoding="utf-8")
-    except OSError:
+        # "x" = exclusive create — FileExistsError means a concurrent
+        # writer claimed the session first (fresh markers survive pruning).
+        with marker.open("x", encoding="utf-8") as fh:
+            fh.write(json.dumps(record, ensure_ascii=False))
+    except OSError:  # includes FileExistsError
         return None
     return marker
 
@@ -176,8 +191,10 @@ def should_stage_gate(
     True iff ALL of:
       1. the edited file is a ``.py`` under ``src/`` or ``examples/``;
       2. the ledger stage is positively in ``GATED_STAGES``;
-      3. no exception-token marker is active (any matched token licenses
-         skipping planning steps — READ_ONLY, IC-11 24h window);
+      3. no *plan-waiver* token marker is active (R1.1 — ``[trivial]`` /
+         ``[hotfix]`` license implementation edits without a fresh plan;
+         ``[exploration]`` declares a read-only session and does NOT
+         suppress the gate — READ_ONLY, IC-11 24h window);
       4. the reminder has not already fired for this session.
 
     Marker writing is the caller's job (``mark_fired``) so this function
@@ -195,7 +212,7 @@ def should_stage_gate(
     if stage not in GATED_STAGES:
         return False
 
-    if read_latest_token(state_dir, MarkerLifecycle.READ_ONLY) is not None:
+    if read_latest_token(state_dir, MarkerLifecycle.READ_ONLY) in PLAN_WAIVER_TOKENS:
         return False
 
     return not has_fired_this_session(state_dir, extract_session_id(payload))

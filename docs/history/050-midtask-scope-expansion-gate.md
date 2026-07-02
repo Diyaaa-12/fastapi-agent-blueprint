@@ -48,11 +48,11 @@ Only Python files under `src/` and `examples/` gate. Tests, docs, tooling, and h
 
 ### D5 — Once per session
 
-Dedup marker `stage-gate-<session_id>.json` (in `.claude/state/`, 24h defensive window per IC-11 convention, self-pruning on write). One nudge per session is the advisory-first noise budget: the rule does the persuading; the hook only breaks the momentum once. Per-prompt refire was rejected for v1 — it requires coupling marker cleanup into `UserPromptSubmit` and risks nagging.
+Dedup marker `stage-gate-<session_id>.json` (in `.claude/state/`, 24h defensive window per IC-11 convention, self-pruning on write). The claim is an **exclusive create** (cross-review R1.3): when concurrent hook invocations race, only the writer that wins the marker emits the advisory — the shim prints nothing unless `mark_fired` returns the claimed path. One nudge per session is the advisory-first noise budget: the rule does the persuading; the hook only breaks the momentum once. Per-prompt refire was rejected for v1 — it requires coupling marker cleanup into `UserPromptSubmit` and risks nagging.
 
 ### D6 — Suppression conditions
 
-Any matched exception token (`[trivial]`/`[hotfix]`/`[exploration]` and Korean equivalents, read via `MarkerLifecycle.READ_ONLY` with the 24h filter) suppresses the gate — each token already licenses skipping planning steps. Because `.agents/state/` is untracked, contributors and CI have no ledger and never see the reminder; this is a maintainer-workflow feature by construction.
+Only **plan-waiver tokens** suppress the gate (cross-review R1.1 narrowed this from "any matched token"): `[trivial]` waives framing/approach/plan outright, and `[hotfix]` is an explicit urgency escape where a mid-fix nudge would fight the token's purpose (each including its Korean equivalent; `PLAN_WAIVER_TOKENS` in `governor/tokens.py`, read via `MarkerLifecycle.READ_ONLY` with the 24h filter). `[exploration]` (and its Korean equivalent) deliberately does **not** suppress: it declares a read-only session, so an implementation edit under it is itself a signal worth surfacing. Because `.agents/state/` is untracked, contributors and CI have no ledger and never see the reminder; this is a maintainer-workflow feature by construction.
 
 ### D7 — Codex parity: documented deferral
 

@@ -340,6 +340,13 @@ def test_claude_completion_gate_emission_keys() -> None:
     assert keys == {"GOVERNOR_REMINDER_WITH_PR", "GOVERNOR_REMINDER_NO_PR"}
 
 
+def test_claude_stage_gate_emission_keys() -> None:
+    keys = _extract_locale_keys_from_python(
+        REPO_ROOT / ".claude" / "hooks" / "post_tool_stage_gate.py"
+    )
+    assert keys == {"STAGE_GATE_REMINDER"}
+
+
 def test_codex_completion_gate_emission_keys() -> None:
     keys = _extract_locale_keys_from_python(
         REPO_ROOT / ".codex" / "hooks" / "completion_gate.py"

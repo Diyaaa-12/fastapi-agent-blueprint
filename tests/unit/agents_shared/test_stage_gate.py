@@ -14,6 +14,8 @@ Covers the pure decision surface of ``governor.stage_gate``:
 from __future__ import annotations
 
 import json
+import os
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -127,6 +129,15 @@ def test_none_and_empty_path_silent(tmp_path: Path) -> None:
     assert not is_implementation_source("", repo_root=tmp_path)
 
 
+def test_relative_traversal_normalised(tmp_path: Path) -> None:
+    """R1.2: `..` segments are resolved before the prefix check."""
+    assert not is_implementation_source("src/../tests/foo.py", repo_root=tmp_path)
+    assert is_implementation_source("examples/../src/x.py", repo_root=tmp_path)
+    assert not is_implementation_source(
+        str(tmp_path / "src" / ".." / "tools" / "x.py"), repo_root=tmp_path
+    )
+
+
 # --- should_stage_gate decision matrix ----------------------------------
 
 
@@ -153,8 +164,8 @@ def test_silent_on_missing_ledger(tmp_path: Path, state_dir: Path) -> None:
     )
 
 
-@pytest.mark.parametrize("token", ["trivial", "hotfix", "exploration", "자명"])
-def test_silent_when_token_marker_active(
+@pytest.mark.parametrize("token", ["trivial", "자명", "hotfix", "긴급"])
+def test_silent_when_plan_waiver_token_active(
     tmp_path: Path, state_dir: Path, token: str
 ) -> None:
     write_marker(
@@ -163,6 +174,20 @@ def test_silent_when_token_marker_active(
     ledger = _ledger(tmp_path, "complete")
     payload = _payload(tmp_path, "src/user/service.py")
     assert not should_stage_gate(payload, state_dir, ledger, repo_root=tmp_path)
+
+
+@pytest.mark.parametrize("token", ["exploration", "탐색"])
+def test_exploration_token_does_not_suppress(
+    tmp_path: Path, state_dir: Path, token: str
+) -> None:
+    """R1.1: [exploration] declares a read-only session — an implementation
+    edit under it is itself a signal, so the gate still fires."""
+    write_marker(
+        {"matched": True, "token": token, "rationale_required": True}, state_dir
+    )
+    ledger = _ledger(tmp_path, "complete")
+    payload = _payload(tmp_path, "src/user/service.py")
+    assert should_stage_gate(payload, state_dir, ledger, repo_root=tmp_path)
 
 
 def test_silent_on_malformed_payload(tmp_path: Path, state_dir: Path) -> None:
@@ -213,6 +238,20 @@ def test_mark_fired_prunes_stale_and_corrupt_markers(state_dir: Path) -> None:
     assert not corrupt.exists()
 
 
+def test_mark_fired_exclusive_claim(state_dir: Path) -> None:
+    """R1.3: the second claim for the same fresh session returns None,
+    so only the first writer emits."""
+    first = mark_fired(state_dir, "sess-race")
+    assert first is not None
+    assert mark_fired(state_dir, "sess-race") is None
+
+
+def test_mark_fired_reclaims_after_stale_marker(state_dir: Path) -> None:
+    stale = state_dir / "stage-gate-sess-race.json"
+    stale.write_text(json.dumps({"ts": STALE_TS}), encoding="utf-8")
+    assert mark_fired(state_dir, "sess-race") is not None
+
+
 def test_mark_fired_keeps_fresh_sibling_markers(state_dir: Path) -> None:
     sibling = state_dir / "stage-gate-sess-other.json"
     sibling.write_text(json.dumps({"ts": FRESH_TS}), encoding="utf-8")
@@ -259,3 +298,75 @@ def test_locale_ko_translation_present(monkeypatch: pytest.MonkeyPatch) -> None:
     assert rendered
     assert rendered != STAGE_GATE_REMINDER
     assert rendered.startswith("[stage-gate]")
+
+
+# --- Claude shim smokes (R2.1) -------------------------------------------
+
+SHIM = REPO_ROOT / ".claude" / "hooks" / "post_tool_stage_gate.py"
+
+
+def _run_shim(stdin_text: str, state_root: Path) -> subprocess.CompletedProcess[str]:
+    env = dict(os.environ)
+    env["HARNESS_STATE_ROOT"] = str(state_root)
+    env.pop("AGENT_LOCALE", None)
+    return subprocess.run(  # noqa: S603
+        [sys.executable, str(SHIM)],
+        input=stdin_text,
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+    )
+
+
+def _seed_state_root(tmp_path: Path, stage: str) -> Path:
+    state_root = tmp_path / "state-root"
+    ledger_dir = state_root / ".agents" / "state"
+    ledger_dir.mkdir(parents=True)
+    (ledger_dir / "current-work.json").write_text(
+        json.dumps({"workflow": {"stage": stage}}), encoding="utf-8"
+    )
+    return state_root
+
+
+def _smoke_payload(session_id: str) -> str:
+    return json.dumps(
+        {
+            "session_id": session_id,
+            "tool_input": {"file_path": str(REPO_ROOT / "src" / "user" / "x.py")},
+        }
+    )
+
+
+def test_shim_emits_additional_context_json(tmp_path: Path) -> None:
+    result = _run_shim(
+        _smoke_payload("smoke-1"), _seed_state_root(tmp_path, "complete")
+    )
+    assert result.returncode == 0
+    out = json.loads(result.stdout)
+    hook_out = out["hookSpecificOutput"]
+    assert hook_out["hookEventName"] == "PostToolUse"
+    assert hook_out["additionalContext"] == STAGE_GATE_REMINDER
+
+
+def test_shim_second_run_is_silent(tmp_path: Path) -> None:
+    state_root = _seed_state_root(tmp_path, "complete")
+    assert _run_shim(_smoke_payload("smoke-2"), state_root).stdout != ""
+    second = _run_shim(_smoke_payload("smoke-2"), state_root)
+    assert second.returncode == 0
+    assert second.stdout == ""
+
+
+def test_shim_silent_on_active_stage(tmp_path: Path) -> None:
+    result = _run_shim(
+        _smoke_payload("smoke-3"), _seed_state_root(tmp_path, "executing")
+    )
+    assert result.returncode == 0
+    assert result.stdout == ""
+
+
+@pytest.mark.parametrize("stdin_text", ["", "not json", '["list"]'])
+def test_shim_fail_open_on_bad_stdin(tmp_path: Path, stdin_text: str) -> None:
+    result = _run_shim(stdin_text, _seed_state_root(tmp_path, "complete"))
+    assert result.returncode == 0
+    assert result.stdout == ""

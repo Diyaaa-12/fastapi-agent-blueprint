@@ -58,7 +58,12 @@ from .stage_gate import (
     should_stage_gate,
 )
 from .time_window import _within_24h
-from .tokens import EXPLORATION_TOKENS, TOKEN_REGEX, parse_exception_token
+from .tokens import (
+    EXPLORATION_TOKENS,
+    PLAN_WAIVER_TOKENS,
+    TOKEN_REGEX,
+    parse_exception_token,
+)
 from .verify import (
     REMINDER_TEXT,
     extract_file_path,
@@ -76,6 +81,7 @@ __all__ = [
     "GOVERNOR_REVIEW_LOG_PREFIX",
     "GateResult",
     "MarkerLifecycle",
+    "PLAN_WAIVER_TOKENS",
     "PROMPT_RULES",
     "ParsedToken",
     "REMINDER_TEXT",

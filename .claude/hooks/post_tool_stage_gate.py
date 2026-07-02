@@ -72,7 +72,10 @@ def main() -> int:
         ledger_path = default_ledger_path(STATE_ROOT)
         if not should_stage_gate(payload, STATE_DIR, ledger_path, REPO_ROOT):
             return 0
-        mark_fired(STATE_DIR, extract_session_id(payload))
+        # R1.3: exclusive-create claim — only the winning writer emits, so
+        # concurrent sibling hook runs produce at most one reminder.
+        if mark_fired(STATE_DIR, extract_session_id(payload)) is None:
+            return 0
         # IC-19: combine resolver result with the canonical English fallback
         # so an empty locale lookup never emits a blank advisory.
         print(

@@ -92,6 +92,7 @@ HOOK_FILES = [
     REPO_ROOT / ".claude" / "hooks" / "user_prompt_submit.py",
     REPO_ROOT / ".claude" / "hooks" / "verify_first.py",
     REPO_ROOT / ".claude" / "hooks" / "completion_gate.py",
+    REPO_ROOT / ".claude" / "hooks" / "post_tool_stage_gate.py",
     REPO_ROOT / ".codex" / "hooks" / "user-prompt-submit.py",
     REPO_ROOT / ".codex" / "hooks" / "verify_first.py",
     REPO_ROOT / ".codex" / "hooks" / "completion_gate.py",
