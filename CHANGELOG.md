@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.4] - 2026-07-05
+
+A patch on top of 0.8.3: the two-domain `blog` example now survives copy-into-`src/`,
+a permanent CI guard locks the copy-flow contract shut, plus a batch of
+AI-collaboration harness improvements (mid-task scope gate, Codex stage-gate parity,
+a unified review protocol) and new HTTP middleware contract tests. No `src/` runtime
+change.
+
+### Added
+
+- **Examples copy-flow CI guard** — `tools/check_examples_copyflow.py` (an AST static check that forbids absolute `examples.*` imports in git-tracked `examples/**/*.py`) is wired as the `examples-copyflow` pre-commit hook and enforced by the CI `architecture` job; per-example `cp`→`src/` boot smoke (`tests/integration/examples/`), a `make smoke-examples` target, and a new `architecture-review-checklist` §10 lock the copy-into-`src/` contract shut after the #262/#261 remediation ([#265](https://github.com/Mr-DooSun/fastapi-agent-blueprint/pull/265), closes [#260](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/260))
+- **HTTP middleware contract tests** — CORS / `X-Request-ID` / middleware-ordering contract coverage for the server stack, so the request-id and CORS wiring cannot silently regress ([#267](https://github.com/Mr-DooSun/fastapi-agent-blueprint/pull/267))
+- **Mid-task scope-expansion gate** — a harness gate that flags when in-flight work drifts beyond its stated scope, plus a "Direction & Non-goals" section in `project-dna.md` §0 (ADR 050) ([#270](https://github.com/Mr-DooSun/fastapi-agent-blueprint/pull/270), closes [#268](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/268))
+- **Codex Stop-time stage-gate adapter** — brings Codex to parity with Claude's mid-task stage gate as a non-blocking Stop-time advisory that reuses the shared `governor.stage_gate` policy unchanged (ADR 050) ([#278](https://github.com/Mr-DooSun/fastapi-agent-blueprint/pull/278), closes [#269](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/269))
+
+### Changed
+
+- **Review-skill family unified under a shared Review Protocol** — `/review-pr`, `/review-architecture`, and `/security-review` now share one Review Protocol definition (correctness / regression / stability / contract / architecture / security dimensions) instead of each wrapper re-declaring its own ([#275](https://github.com/Mr-DooSun/fastapi-agent-blueprint/pull/275), #274)
+
+### Fixed
+
+- **`blog` example now survives copy-into-`src/`** — the two-domain example crashed on the documented `cp -r examples/blog src/` activation with `Table 'author' is already defined`, because `post_container` pulled `examples.blog.author.AuthorModel` while auto-discovery had already registered `src.author.AuthorModel` for the same table. Intra-domain imports are now package-relative and the two cross-domain references resolve to runtime-absolute `src.author.*` — the same shape as the real `src/auth → src/user` dependency — so both domains copy in, the app boots, and `authorDisplayName` resolves end-to-end ([#263](https://github.com/Mr-DooSun/fastapi-agent-blueprint/pull/263), closes [#261](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/261))
+- **Verify-first harness reminder now reaches the model** — the reminder was emitted on a channel the model did not observe; it now emits on the model-visible `additionalContext` channel ([#273](https://github.com/Mr-DooSun/fastapi-agent-blueprint/pull/273), fixes [#271](https://github.com/Mr-DooSun/fastapi-agent-blueprint/issues/271))
+
+### Docs
+
+- **ADRs 051–053 backfilled and ADR index hygiene restored** ([#276](https://github.com/Mr-DooSun/fastapi-agent-blueprint/pull/276))
+
 ## [0.8.3] - 2026-07-02
 
 A small patch on top of 0.8.2: two new LLM-calling contributor examples, plus a
