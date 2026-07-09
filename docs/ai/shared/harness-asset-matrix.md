@@ -50,6 +50,11 @@ The shared constitution and the tool-level entry points. These files transitivel
 | `.codex/hooks.json` | Keep | Low | Medium |
 | `.claude/settings.json` | Keep | Low | Medium |
 | `.claude/settings.local.json` | Keep | Low | Low |
+| `.gemini/settings.json` | Keep | Medium | High |
+| `.antigravity/plugin.json` | Keep | Low | Medium |
+| `.antigravity/gemini-extension.json` | Keep | Low | Low |
+| `.antigravity/mcp_config.json` | Keep | Medium | Medium |
+| `.antigravity/permissions.json` | Keep | Medium | High |
 | `.mcp.json` | Keep | Low | Low |
 | `docs/history/045-hybrid-harness-target-architecture.md` | Keep | Low | High |
 | `.github/pull_request_template.md` | Keep | Low | High |
@@ -124,6 +129,24 @@ The shared constitution and the tool-level entry points. These files transitivel
 - **Stability impact**: Low (does not interact with Default Flow).
 - **Notes**: Codex MCP servers live under `.codex/config.toml [mcp_servers.*]`, not here.
 
+### `.gemini/settings.json`
+
+- **Current role**: Antigravity / Gemini CLI project hook configuration. Wires `SessionStart`, `BeforeAgent`, `BeforeTool`, `AfterTool`, and `AfterAgent` to `.antigravity/hooks/` through `.agents/shared/harness-python.sh`.
+- **Why it exists**: Antigravity 2.0 parity requires repo-committable hook configuration for Desktop / CLI compatible runtimes.
+- **Replacement feasibility**: None. It is the tool-specific adapter surface.
+- **Final location**: unchanged.
+- **Migration risk**: Medium. Hook event names differ from Claude and Codex, so payload compatibility must be verified against the live runtime.
+- **Stability impact**: High. This is the project-local entry point for Antigravity governance reminders.
+
+### `.antigravity/{plugin.json,gemini-extension.json,mcp_config.json,permissions.json}`
+
+- **Current role**: Antigravity plugin manifest, Gemini CLI extension validation manifest, MCP template, and permission template.
+- **Why it exists**: Keeps Antigravity setup repo-local while avoiding credentials or machine-local settings in committed files.
+- **Replacement feasibility**: None. These files are Antigravity-specific packaging and setup surfaces.
+- **Final location**: unchanged.
+- **Migration risk**: Medium for permissions / MCP because local runtimes may evolve schema details; low for the two manifests.
+- **Stability impact**: Medium. They make the adapter installable, linkable, and reviewable without duplicating shared policy.
+
 ### `docs/history/045-hybrid-harness-target-architecture.md`
 
 - **Current role**: ADR 045 — top-level decisions for the hybrid harness target architecture (this initiative). Navigator to the three living docs.
@@ -181,7 +204,7 @@ rather than primary entry points (`Overlay`).
 ### `project-dna.md`
 
 - **Current role**: 976-line canonical pattern catalogue auto-extracted from the codebase. Sections §0~§14 cover directory structure, base classes, generics, CRUD, DI, conversions, security, features, routers, exception, admin, vector, embedding, LLM.
-- **Why it exists**: Adopted as part of the Hybrid C harness so that both Claude and Codex read identical architecture references.
+- **Why it exists**: Adopted as part of the Hybrid C harness so that Claude, Codex, and Antigravity read identical architecture references.
 - **Replacement feasibility**: None — superpowers carries no project-specific architecture.
 - **Final location**: unchanged.
 - **Migration risk**: Low (read-only reference).
@@ -323,7 +346,7 @@ rather than primary entry points (`Overlay`).
 
 ### `target-operating-model.md`
 
-- **Current role**: Long-form Target Operating Model — 7-step Default Flow, mandatory subset, exception model, Claude/Codex alignment, sample-workflow traces.
+- **Current role**: Long-form Target Operating Model — 7-step Default Flow, mandatory subset, exception model, Claude/Codex/Antigravity alignment, sample-workflow traces.
 - **Why it exists**: Issue #117 Required Output #2.
 - **Replacement feasibility**: None.
 - **Final location**: unchanged.
@@ -363,7 +386,7 @@ rather than primary entry points (`Overlay`).
 
 ### `.agents/shared/governor/` (Phase 5 / #124 — NEW)
 
-- **Current role**: Shared governor *policy* package consumed by Claude/Codex hook adapters as a thin shim. Phase 5 snapshot — eight modules: `__init__.py` (public API + `__all__`), `paths.py` (REPO_ROOT discovery + GOVERNOR_PATHS_MD), `time_window.py` (single `_within_24h`), `tokens.py` (Phase 2 parser + EXPLORATION_TOKENS; #268 adds PLAN_WAIVER_TOKENS), `markers.py` (write_marker + read_latest_token + MarkerLifecycle enum + consume_phase2_markers per IC-11/IC-12), `safety.py` (HC-1 single-entry `safe_parse_exception_token` returning `Blocked | ParsedToken`), `verify.py` (Phase 3 REMINDER_TEXT + should_remind_claude), `completion_gate.py` (Phase 4 GateResult dataclass + evaluate_gate + render_reminder + parse_trigger_globs + match_log_entry). Later additions (see Update Log): `sync_cosmetic.py` (ADR 047), `stage_gate.py` (#268 / ADR 050 — GATED_STAGES allowlist, implementation-surface predicate, plan-waiver suppression, exclusive-create session markers).
+- **Current role**: Shared governor *policy* package consumed by Claude/Codex/Antigravity hook adapters as a thin shim. Phase 5 snapshot — eight modules: `__init__.py` (public API + `__all__`), `paths.py` (REPO_ROOT discovery + GOVERNOR_PATHS_MD), `time_window.py` (single `_within_24h`), `tokens.py` (Phase 2 parser + EXPLORATION_TOKENS; #268 adds PLAN_WAIVER_TOKENS), `markers.py` (write_marker + read_latest_token + MarkerLifecycle enum + consume_phase2_markers per IC-11/IC-12), `safety.py` (HC-1 single-entry `safe_parse_exception_token` returning `Blocked | ParsedToken`), `verify.py` (Phase 3 REMINDER_TEXT + should_remind_claude), `completion_gate.py` (Phase 4 GateResult dataclass + evaluate_gate + render_reminder + parse_trigger_globs + match_log_entry). Later additions (see Update Log): `sync_cosmetic.py` (ADR 047), `stage_gate.py` (#268 / ADR 050 — GATED_STAGES allowlist, implementation-surface predicate, plan-waiver suppression, exclusive-create session markers), and Antigravity hook shims reusing the same package.
 - **Why it exists**: Phase 4 retrospective surfaced `_within_24h` × 4, `_read_latest_token` × 4, `EXPLORATION_TOKENS` × 2, and reminder-text duplicates whose silent drift would risk governor incidents. Phase 5 (#124) consolidates them into a single Tier B `.agents/shared/governor/` package per ADR 045 / target-operating-model §5. Hooks become thin shims (commit 5).
 - **Replacement feasibility**: None — this is the consolidation target itself.
 - **Final location**: `.agents/shared/governor/`. `pyproject.toml` registers `[tool.pytest.ini_options].pythonpath = [".agents/shared"]` so tests import `governor.*` directly.
@@ -563,7 +586,7 @@ Bucket guideline:
 
 ## Tier 3 — Hooks
 
-Twenty hook scripts (7 Claude shell + 5 Claude Python implementations + 8 Codex Python). Phase 2 (#121) added `.claude/hooks/user-prompt-submit.sh` + `.claude/hooks/user_prompt_submit.py` as the first Claude UserPromptSubmit hook surface; Phase 3 (#122) added `.claude/hooks/verify-first.{sh,py}` + `.codex/hooks/verify_first.py`; Phase 4 (#123) added `.claude/hooks/completion_gate.py` + `.codex/hooks/completion_gate.py` as the completion-gate helper pair (IC-11 Option A + Pillar 7); #268 (ADR 050) added `.claude/hooks/stage-gate.sh` + `.claude/hooks/post_tool_stage_gate.py` as the mid-task stage-gate advisory pair (third `PostToolUse Edit|Write` sibling); #269 shipped the Codex counterpart as a Stop-time advisory folded into `.codex/hooks/stop-sync-reminder.py` (no new hook file — Codex fires one Stop event), reusing the shared `governor.stage_gate` policy.
+Twenty-eight hook scripts (7 Claude shell + 5 Claude Python implementations + 8 Codex Python + 8 Antigravity Python). Phase 2 (#121) added `.claude/hooks/user-prompt-submit.sh` + `.claude/hooks/user_prompt_submit.py` as the first Claude UserPromptSubmit hook surface; Phase 3 (#122) added `.claude/hooks/verify-first.{sh,py}` + `.codex/hooks/verify_first.py`; Phase 4 (#123) added `.claude/hooks/completion_gate.py` + `.codex/hooks/completion_gate.py` as the completion-gate helper pair (IC-11 Option A + Pillar 7); #268 (ADR 050) added `.claude/hooks/stage-gate.sh` + `.claude/hooks/post_tool_stage_gate.py` as the mid-task stage-gate advisory pair (third `PostToolUse Edit|Write` sibling); #269 shipped the Codex counterpart as a Stop-time advisory folded into `.codex/hooks/stop-sync-reminder.py` (no new hook file — Codex fires one Stop event), reusing the shared `governor.stage_gate` policy. The Antigravity adapter wires Gemini / Antigravity events through `.gemini/settings.json` to `.antigravity/hooks/`, reusing the same shared governor policy with runtime state isolated under `.antigravity/state/`.
 
 | Asset | Bucket | Risk | Impact |
 |---|---|---|---|
@@ -587,6 +610,14 @@ Twenty hook scripts (7 Claude shell + 5 Claude Python implementations + 8 Codex 
 | `.codex/hooks/stop-sync-reminder.py` | Keep | Low | Medium |
 | `.codex/hooks/verify_first.py` | Overlay | Low | Low |
 | `.codex/hooks/completion_gate.py` | Overlay | Low | Low |
+| `.antigravity/hooks/_shared.py` | Keep | Low | Low |
+| `.antigravity/hooks/session-start.py` | Keep | Low | Low |
+| `.antigravity/hooks/user-prompt-submit.py` | Keep | Medium | Medium |
+| `.antigravity/hooks/pre-tool-security.py` | Keep | Medium | Medium |
+| `.antigravity/hooks/post-tool-format.py` | Keep | Medium | Medium |
+| `.antigravity/hooks/verify_first.py` | Overlay | Medium | Low |
+| `.antigravity/hooks/completion_gate.py` | Overlay | Medium | Low |
+| `.antigravity/hooks/stop-sync-reminder.py` | Overlay | Medium | Medium |
 
 ### `.claude/hooks/check-required-plugins.sh`
 
@@ -727,7 +758,7 @@ Twenty hook scripts (7 Claude shell + 5 Claude Python implementations + 8 Codex 
 
 ## Tier 4 — Rule Files
 
-Six rule files (5 Claude + 1 Codex). All `Keep` except `commands.md` which becomes `Overlay` because Default Flow rerouting changes its primary use.
+Seven rule files (5 Claude + 1 Codex + 1 Antigravity). All `Keep` except `commands.md` which becomes `Overlay` because Default Flow rerouting changes its primary use.
 
 | Asset | Bucket | Risk | Impact |
 |---|---|---|---|
@@ -737,6 +768,7 @@ Six rule files (5 Claude + 1 Codex). All `Keep` except `commands.md` which becom
 | `.claude/rules/architecture-conventions.md` | Keep | Low | High |
 | `.claude/rules/commands.md` | Overlay | Low | Low |
 | `.codex/rules/fastapi-agent-blueprint.rules` | Keep | Low | Medium |
+| `.antigravity/rules/project-harness.md` | Keep | Low | Medium |
 
 ### `.claude/rules/absolute-prohibitions.md`
 
@@ -778,23 +810,29 @@ Six rule files (5 Claude + 1 Codex). All `Keep` except `commands.md` which becom
 - **Phase 1 edit (Codex R6)**: `git push` justification updated to mention "Default Coding Flow verification and self-review steps".
 - **Notes**: Default Flow ranks below this file (D1.2). Escape tokens never lift a prefix rule.
 
+### `.antigravity/rules/project-harness.md`
+
+- **Current role**: Antigravity adapter rule file pointing back to `AGENTS.md`, `.agents/skills/`, and `.agents/shared/governor/`.
+- **Bucket**: Keep.
+- **Notes**: The file deliberately avoids duplicating project architecture rules; it exists to keep Antigravity plugin discovery aligned with the shared source of truth.
+
 ---
 
 ## Bucket Distribution Summary
 
 | Bucket | Count | Share | Notes |
 |---|---|---|---|
-| Keep | 53 | ~79% | Project-specific architecture / safety / reference value (incl. admin-design-system.md #193 + 4 design + 3 self-coherence-recovery process-governor artefacts + 2 Phase 2 #121 hooks + Phase 5 #124 shared governor package now extended by ADR 047 PR B-F with `sync_cosmetic.py`; ADR 047 PR B-F also added `tools/check_governor_footer.py` + `.github/workflows/governor-footer-lint.yml` in place of the removed `tools/check_g_closure.py`) |
-| Overlay | 16 | ~23% | Process discipline now routed by Default Flow (issue #268 adds the 2 stage-gate hooks; issue #257 adds `execute-plan`; Phase 3 #122 adds 3 verify-first; Phase 4 #123 adds 2 completion-gate hooks; Phase 5 #124 reduces those hooks to thin shims without changing buckets) |
+| Keep | 64 | ~76% | Project-specific architecture / safety / reference value (incl. admin-design-system.md #193 + Antigravity config assets + Phase 5 #124 shared governor package now extended by ADR 047 PR B-F with `sync_cosmetic.py`; ADR 047 PR B-F also added `tools/check_governor_footer.py` + `.github/workflows/governor-footer-lint.yml` in place of the removed `tools/check_g_closure.py`) |
+| Overlay | 19 | ~23% | Process discipline now routed by Default Flow (issue #268 adds the 2 stage-gate hooks; issue #257 adds `execute-plan`; Phase 3 #122 adds verify-first; Phase 4 #123 adds completion-gate hooks; the Antigravity verify-first / completion-gate / stop advisory shims add 3 Overlay assets) |
 | Replace | 0 | 0% | None in initial inventory; reserved for future passes |
 | Drop | 1 | ~1% | `tools/check_g_closure.py` retired by ADR 047 PR B-F (Guard G enforcement target moved to PR-description Governor Footer; `tools/check_governor_footer.py` is the replacement and is counted under `Keep`). |
-| **Total** | **70** | 100% | |
+| **Total** | **84** | 100% | |
 
-Counting note: `Tier 0=9` (8 + ADR 045 + `.github/pull_request_template.md`), `Tier 1=21` (13 reference incl. `admin-design-system.md` + 3 design living docs + `governor-review-log/` directory + `governor-paths.md` + `.agents/shared/governor/` package + `tools/check_g_closure.py` historical-Drop + `tools/check_governor_footer.py` + `docs/history/047-governor-review-provenance-consolidation.md`), `Tier 2=15` (skill rows; each row covers all 3 wrapper layers), `Tier 3=20` (#268 added `.claude/hooks/stage-gate.sh` + `.claude/hooks/post_tool_stage_gate.py`; Phase 4 #123 = 18, Phase 3 = 16, Phase 2 = 13, Phase 1 = 10; Phase 5 #124 converted 6 of these to thin shims without changing the count), `Tier 4=6` — sum 71. The 70 figure above excludes `.claude/settings.local.json` from the active-share count because it is `.gitignore`d. The bucket-share percentages use 70 as the denominator.
+Counting note: `Tier 0=14` (tool entry points and top-level governance files), `Tier 1=21` (13 reference incl. `admin-design-system.md` + 3 design living docs + `governor-review-log/` directory + `governor-paths.md` + `.agents/shared/governor/` package + `tools/check_g_closure.py` historical-Drop + `tools/check_governor_footer.py` + `docs/history/047-governor-review-provenance-consolidation.md`), `Tier 2=15` (skill rows; each row covers all 3 wrapper layers), `Tier 3=28` (#268 added `.claude/hooks/stage-gate.sh` + `.claude/hooks/post_tool_stage_gate.py`; #269 folded Codex stage-gate into the existing Stop hook; Antigravity adds 8 Python hook shims), `Tier 4=7` — sum 85. The 84 figure above excludes `.claude/settings.local.json` from the active-share count because it is `.gitignore`d. The bucket-share percentages use 84 as the denominator.
 
 This distribution matches the "Mostly Local with Philosophy Overlay" model declared in [ADR 045 §D4](../../history/045-hybrid-harness-target-architecture.md). The `Replace` and `Drop` columns are both empty: no asset's content is being rewritten, and self-verification during cross-link work showed that the only `Drop` candidate identified during the first triage was actually an active component (a sh-wrapper `.py` pair).
 
-If a future `Replace` candidate emerges, the threshold is: Keep+Overlay would otherwise force the asset into structural inconsistency with the Default Flow. None of the current 70 active assets meet that.
+If a future `Replace` candidate emerges, the threshold is: Keep+Overlay would otherwise force the asset into structural inconsistency with the Default Flow. None of the current 84 active assets meet that.
 
 ## Verification
 
@@ -804,21 +842,23 @@ The following self-checks must pass before this matrix is treated as authoritati
   ```bash
   # Tier 0
   ls AGENTS.md CLAUDE.md .codex/config.toml .codex/hooks.json \
-     .claude/settings.json .claude/settings.local.json .mcp.json
+     .claude/settings.json .claude/settings.local.json .gemini/settings.json \
+     .antigravity/plugin.json .antigravity/gemini-extension.json \
+     .antigravity/mcp_config.json .antigravity/permissions.json .mcp.json
   # Tier 1
   ls docs/ai/shared/*.md
   ls tools/check_governor_footer.py
   # Tier 2 (3 layers per skill)
   ls docs/ai/shared/skills/*.md .claude/skills/*/SKILL.md .agents/skills/*/SKILL.md
   # Tier 3 (exclude gitignored caches such as __pycache__/*.pyc)
-  find .claude/hooks .codex/hooks -type f \
+  find .claude/hooks .codex/hooks .antigravity/hooks -type f \
     ! -path '*/__pycache__/*' ! -name '*.pyc'
   # Tier 4
-  ls .claude/rules/*.md .codex/rules/*
+  ls .claude/rules/*.md .codex/rules/* .antigravity/rules/*.md
   ```
 - [ ] Every skill has a consistent bucket across its three wrapper layers (Phase 1 update preserves this invariant).
 - [ ] No asset is classified `Replace` while other Phase 1 work treats it as `Keep`.
-- [ ] Any `Drop` candidate has been verified to have zero callers (`rg <name> .claude/ .codex/`). Self-verification during cross-link work overturned the only initial Drop candidate; the principle remains: a Drop classification requires positive evidence of zero callers.
+- [ ] Any `Drop` candidate has been verified to have zero callers (`rg <name> .claude/ .codex/ .antigravity/ .gemini/`). Self-verification during cross-link work overturned the only initial Drop candidate; the principle remains: a Drop classification requires positive evidence of zero callers.
 - [ ] Bucket-share ratio matches §Bucket Distribution Summary (~76% Keep / ~23% Overlay / 0% Replace / ~1% Drop after #268) within ±10%.
 
 ## Update Log
@@ -836,3 +876,4 @@ The following self-checks must pass before this matrix is treated as authoritati
 - 2026-06-29 — #257: added the `execute-plan` skill triple (Tier 2, Overlay) — native execution workflow consuming plan-feature Execution Packets; work-ledger schema v2 (workflow stage / tasks / review) + advisory-only Stop/SessionStart workflow signals. Total 67 → 68 (Tier 2 14 → 15; Overlay 13 → 14). Bucket-share ~79% Keep / ~21% Overlay.
 - 2026-07-03 — #268 (ADR 050): added `.claude/hooks/stage-gate.sh` + `.claude/hooks/post_tool_stage_gate.py` to Tier 3 (mid-task stage-gate advisory, third `PostToolUse Edit|Write` sibling, both Overlay); added `stage_gate.py` to the `.agents/shared/governor/` package (Tier 1 package row unchanged — counted as one asset) and `PLAN_WAIVER_TOKENS` to `tokens.py`; locale key `STAGE_GATE_REMINDER` (EN+KO). Codex counterpart deferred to #269. Total 68 → 70 (Tier 3 18 → 20; Overlay 14 → 16). Bucket-share ~76% Keep / ~23% Overlay.
 - 2026-07-04 — #269 (ADR 050): shipped the Codex stage-gate adapter as a Stop-time advisory folded into `.codex/hooks/stop-sync-reminder.py` (`stage_gate_segment`, sixth responsibility, evaluated before Phase 2 marker consumption) — no new hook file (Codex fires one Stop event), reuses the shared `governor.stage_gate` policy unchanged (adapter-only). Flipped the Tier 3 header + `stage-gate.sh` Notes deferred→shipped and the stop-sync-reminder.py role from five to six responsibilities. No asset count change (Total 70 → 70).
+- 2026-07-09 — Antigravity 2.0 adapter: added `.gemini/settings.json`, `.antigravity/{plugin.json,gemini-extension.json,mcp_config.json,permissions.json}`, `.antigravity/rules/project-harness.md`, and 8 `.antigravity/hooks/*.py` shims. The adapter maps Gemini / Antigravity events to the shared governor policy without duplicating rules. Total 70 → 84 (Keep 53 → 64; Overlay 16 → 19).
